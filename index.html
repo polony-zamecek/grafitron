@@ -12,15 +12,58 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode_js@1.0.0/qrcode.min.js"></script>
 
     <style>
-        body { font-family: 'Montserrat', sans-serif; background-color: #004d40; color: white; margin: 0; min-height: 100vh;}
-        .btn { text-transform: uppercase; font-weight: 900; letter-spacing: 0.05em; transition: all 0.2s; border: none; outline: none; cursor: pointer; display: flex; align-items: center; justify-content: center; user-select: none;}
-        .btn:active { transform: translateY(4px); }
+        body { 
+            font-family: 'Montserrat', sans-serif; 
+            background-color: #ffffff; 
+            color: #004d40; 
+            margin: 0; 
+            min-height: 100vh;
+            background-image: radial-gradient(#004d40 1px, transparent 1px);
+            background-size: 40px 40px; /* Jemný tečkovaný rastr na pozadí pro dokonalý print feel */
+        }
+        
+        /* Ostré, neo-brutalistické stíny pro tlačítka */
+        .btn { 
+            text-transform: uppercase; 
+            font-weight: 900; 
+            letter-spacing: 0.05em; 
+            transition: all 0.1s; 
+            border: 4px solid #004d40; 
+            box-shadow: 6px 6px 0px 0px #004d40;
+            outline: none; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            user-select: none;
+        }
+        .btn:active { 
+            transform: translate(4px, 4px); 
+            box-shadow: 2px 2px 0px 0px #004d40; 
+        }
+
+        /* Univerzální rámeček se stínem pro kontejnery */
+        .box-brutal {
+            border: 4px solid #004d40;
+            box-shadow: 8px 8px 0px 0px #004d40;
+            background-color: #ffffff;
+        }
+
+        .title-shadow {
+            text-shadow: 6px 6px 0px #00ffff;
+        }
+        
+        .title-shadow-salmon {
+            text-shadow: 6px 6px 0px #f4816e;
+        }
+
         .bg-salmon { background-color: #f4816e; color: #004d40; }
         .bg-cyan { background-color: #00ffff; color: #004d40; }
-        .bg-dark { background-color: #004d40; border: 2px solid #00ffff; color: #00ffff; }
+        .bg-white { background-color: #ffffff; color: #004d40; }
+        
         .sharp { border-radius: 0; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-        .grid-4 { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 1rem; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        .grid-4 { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 1.5rem; }
         @media (max-width: 640px) { .grid-4 { grid-template-columns: 1fr; grid-template-rows: repeat(4, 1fr); } }
     </style>
 </head>
@@ -28,8 +71,8 @@
 
     <!-- 1. OBRAZOVKA: VÝBĚR ROLE -->
     <div id="view-role" class="flex-1 flex flex-col items-center justify-center space-y-12 h-screen">
-        <h1 class="text-5xl md:text-8xl font-black tracking-widest text-[#00ffff]">GRAFITRON</h1>
-        <div class="grid-2 w-full max-w-4xl h-48 md:h-64">
+        <h1 class="text-6xl md:text-8xl font-black tracking-widest text-[#004d40] title-shadow">GRAFITRON</h1>
+        <div class="grid-2 w-full max-w-4xl h-48 md:h-64 mt-8">
             <button id="btn-role-teacher" class="btn bg-cyan sharp text-3xl md:text-5xl">Učitel</button>
             <button id="btn-role-student" class="btn bg-salmon sharp text-3xl md:text-5xl">Student</button>
         </div>
@@ -37,74 +80,76 @@
 
     <!-- 2. OBRAZOVKA: UČITEL - VÝBĚR TESTU Z TABULKY -->
     <div id="view-teacher-setup" class="hidden flex-1 flex-col items-center justify-center max-w-3xl mx-auto w-full h-screen">
-        <h2 class="text-4xl font-black text-[#00ffff] mb-8 uppercase text-center">Příprava hry</h2>
-        <p id="teacher-loading" class="text-2xl mb-8 animate-pulse text-[#f4816e] font-bold">Připojuji se ke Google Tabulce...</p>
-        
-        <div id="teacher-setup-form" class="hidden w-full flex flex-col space-y-6">
-            <label class="text-xl uppercase font-bold text-[#00ffff]">Vyber test z tabulky:</label>
-            <select id="select-test" class="p-6 text-3xl sharp text-[#004d40] bg-white border-4 border-[#00ffff] uppercase font-bold outline-none cursor-pointer">
-                <!-- Doplní se automaticky z Google Sheets -->
-            </select>
-            <button id="btn-create-room" class="btn bg-salmon sharp text-3xl p-8 mt-8 hover:bg-white hover:text-[#f4816e]">Založit místnost</button>
+        <div class="box-brutal p-12 w-full flex flex-col items-center text-center">
+            <h2 class="text-5xl font-black text-[#004d40] mb-8 uppercase title-shadow-salmon">Příprava hry</h2>
+            <p id="teacher-loading" class="text-3xl mb-8 animate-pulse text-[#f4816e] font-black">Připojuji se ke Google Tabulce...</p>
+            
+            <div id="teacher-setup-form" class="hidden w-full flex flex-col space-y-8">
+                <label class="text-2xl uppercase font-black text-[#004d40]">Vyber test z tabulky:</label>
+                <select id="select-test" class="p-6 text-3xl sharp text-[#004d40] border-4 border-[#004d40] box-brutal uppercase font-black outline-none cursor-pointer bg-white">
+                    <!-- Doplní se automaticky z Google Sheets -->
+                </select>
+                <button id="btn-create-room" class="btn bg-salmon sharp text-3xl p-8 mt-8">Založit místnost</button>
+            </div>
         </div>
     </div>
 
     <!-- 3. OBRAZOVKA: UČITEL - LOBBY A HRA -->
-    <div id="view-teacher" class="hidden flex-1 flex-col w-full max-w-7xl mx-auto">
-        <div class="flex justify-between items-center mb-8 border-b-4 border-[#00ffff] pb-6">
+    <div id="view-teacher" class="hidden flex-1 flex-col w-full max-w-7xl mx-auto mt-4">
+        <div class="flex justify-between items-center mb-10 pb-6 border-b-8 border-[#004d40]">
             <div>
-                <h2 class="text-2xl font-bold uppercase text-[#f4816e] tracking-widest mb-2">Připoj se na mobilu! PIN:</h2>
-                <div id="room-pin-display" class="text-7xl md:text-9xl font-black text-[#00ffff] tracking-widest">------</div>
+                <h2 class="text-3xl font-black uppercase text-[#004d40] tracking-widest mb-2">Připoj se na mobilu! PIN:</h2>
+                <div id="room-pin-display" class="text-7xl md:text-9xl font-black text-[#f4816e] title-shadow tracking-widest">------</div>
             </div>
-            <div class="bg-white p-4 border-4 border-[#f4816e]">
+            <div class="box-brutal p-4 bg-white">
                 <div id="qrcode"></div>
             </div>
         </div>
 
-        <div class="flex justify-between items-center mb-8 bg-[#00332a] p-6 border-2 border-[#00ffff]">
-            <h3 class="text-3xl font-bold uppercase text-white"><span id="students-count" class="text-[#00ffff] text-5xl">0</span> Studentů v místnosti</h3>
-            <button id="btn-start-quiz" class="btn bg-salmon sharp px-12 py-6 text-3xl hidden hover:bg-white">Spustit kvíz</button>
-            <button id="btn-next-question" class="btn bg-cyan sharp px-12 py-6 text-3xl hidden hover:bg-white transition-all">Další otázka ➔</button>
+        <div class="flex justify-between items-center mb-10 box-brutal bg-cyan p-8">
+            <h3 class="text-4xl font-black uppercase text-[#004d40]"><span id="students-count" class="text-[#f4816e] text-6xl mr-2">0</span> Studentů v místnosti</h3>
+            <button id="btn-start-quiz" class="btn bg-salmon sharp px-12 py-6 text-4xl hidden">Spustit kvíz</button>
+            <button id="btn-next-question" class="btn bg-white sharp px-12 py-6 text-3xl hidden">Další otázka ➔</button>
         </div>
 
-        <div id="teacher-question-view" class="hidden mb-12 text-center bg-[#00332a] p-8 border-4 border-[#f4816e]">
-            <h2 id="teacher-question-text" class="text-5xl font-black mb-8 text-white leading-tight"></h2>
-            <img id="teacher-question-image" src="" alt="Obrázek k otázce" class="max-h-80 mx-auto mb-8 hidden border-4 border-white object-contain">
+        <div id="teacher-question-view" class="hidden mb-12 text-center box-brutal bg-white p-12">
+            <h2 id="teacher-question-text" class="text-5xl font-black mb-10 text-[#004d40] leading-tight"></h2>
+            <img id="teacher-question-image" src="" alt="Obrázek k otázce" class="max-h-80 mx-auto mb-10 hidden border-4 border-[#004d40] box-shadow-brutal object-contain">
             <div id="teacher-options" class="w-full"></div>
         </div>
 
-        <!-- Závěrečná obrazovka učitele (skrytá během hry) -->
-        <div id="teacher-finished-view" class="hidden mb-12 text-center bg-[#00332a] p-12 border-4 border-[#00ffff]">
-            <h2 class="text-7xl font-black text-[#00ffff] uppercase mb-6">Konec testu!</h2>
-            <p class="text-3xl font-bold text-white mb-8">Díky za hru. Níže najdete finální pořadí.</p>
+        <!-- Závěrečná obrazovka učitele -->
+        <div id="teacher-finished-view" class="hidden mb-12 text-center box-brutal bg-[#00ffff] p-16">
+            <h2 class="text-7xl font-black text-[#004d40] title-shadow-salmon uppercase mb-6">Konec testu!</h2>
+            <p class="text-3xl font-bold text-[#004d40] mb-8">Díky za hru. Níže najdete finální pořadí.</p>
         </div>
 
-        <h3 id="leaderboard-title" class="text-2xl font-bold uppercase text-[#00ffff] mb-4">Živý žebříček:</h3>
-        <div id="leaderboard" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4"></div>
+        <h3 id="leaderboard-title" class="text-3xl font-black uppercase text-[#004d40] mb-6 inline-block bg-[#00ffff] px-4 py-2 border-4 border-[#004d40]">Živý žebříček:</h3>
+        <div id="leaderboard" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6"></div>
     </div>
 
     <!-- 4. OBRAZOVKA: STUDENT - PŘIHLÁŠENÍ -->
-    <div id="view-student" class="hidden flex-1 flex-col items-center justify-center max-w-md mx-auto w-full h-screen space-y-6">
-        <h2 class="text-5xl font-black text-[#00ffff] mb-8 uppercase text-center">Vstup do hry</h2>
-        <input type="number" id="student-pin" placeholder="PIN" class="w-full p-6 text-4xl sharp text-center text-[#004d40] border-4 border-[#00ffff] font-black uppercase outline-none bg-white">
-        <input type="text" id="student-name" placeholder="PŘEZDÍVKA" class="w-full p-6 text-3xl sharp text-center text-[#004d40] border-4 border-[#00ffff] font-black uppercase outline-none bg-white">
-        <button id="btn-join-room" class="btn bg-salmon sharp w-full p-6 text-4xl mt-4 hover:bg-white hover:text-[#f4816e]">Hrát</button>
-        <div id="student-error" class="text-[#f4816e] font-bold text-xl text-center h-8"></div>
+    <div id="view-student" class="hidden flex-1 flex-col items-center justify-center max-w-md mx-auto w-full h-screen space-y-8">
+        <h2 class="text-6xl font-black text-[#004d40] title-shadow-salmon mb-8 uppercase text-center">Vstup do hry</h2>
+        <input type="number" id="student-pin" placeholder="PIN" class="w-full p-6 text-4xl sharp text-center text-[#004d40] border-4 border-[#004d40] box-brutal font-black uppercase outline-none bg-white">
+        <input type="text" id="student-name" placeholder="PŘEZDÍVKA" class="w-full p-6 text-3xl sharp text-center text-[#004d40] border-4 border-[#004d40] box-brutal font-black uppercase outline-none bg-white">
+        <button id="btn-join-room" class="btn bg-cyan sharp w-full p-8 text-4xl mt-4">Hrát</button>
+        <div id="student-error" class="text-[#f4816e] font-black text-2xl text-center h-8"></div>
     </div>
 
     <!-- 5. OBRAZOVKA: STUDENT - HRA -->
     <div id="view-student-game" class="hidden flex-1 flex-col w-full max-w-md mx-auto h-screen justify-center">
-        <div id="student-waiting" class="text-center">
-            <h2 class="text-5xl font-black text-[#00ffff] mb-6 uppercase animate-pulse">Čekáme!</h2>
-            <p class="text-2xl font-bold">Koukej na projektor.</p>
+        <div id="student-waiting" class="text-center box-brutal bg-white p-10">
+            <h2 class="text-6xl font-black text-[#004d40] title-shadow-salmon mb-6 uppercase animate-pulse">Čekáme!</h2>
+            <p class="text-2xl font-bold text-[#004d40]">Koukej na projektor.</p>
         </div>
 
         <div id="student-playing" class="hidden h-full flex flex-col justify-center">
-            <div class="mb-8 w-full bg-[#00332a] border-4 border-[#00ffff] h-12 sharp relative">
-                <div id="time-bar" class="bg-[#00ffff] h-full transition-all ease-linear" style="width: 100%;"></div>
+            <div class="mb-10 w-full bg-white box-brutal h-12 sharp relative p-1">
+                <div id="time-bar" class="bg-[#f4816e] h-full transition-all ease-linear border-r-4 border-[#004d40]" style="width: 100%;"></div>
             </div>
             
-            <h2 id="student-info" class="text-2xl font-bold uppercase text-center text-white mb-4">Vyber odpověď:</h2>
+            <h2 id="student-info" class="text-3xl font-black uppercase text-center text-[#004d40] mb-6 inline-block bg-[#00ffff] px-4 py-2 border-4 border-[#004d40]">Vyber odpověď:</h2>
             <div id="student-input-area" class="flex-1 w-full pb-8">
                 <!-- Tlačítka se vygenerují dynamicky -->
             </div>
@@ -133,7 +178,7 @@
         let currentRole = null, roomPin = null, studentId = null;
         let quizData = [], currentQuestionIndex = 0;
         let timerInterval, timeLeft = 15, timeLimit = 15;
-        let currentRoomState = 'waiting'; // Důležitá proměnná pro správu logiky UI
+        let currentRoomState = 'waiting';
         
         const views = {
             role: document.getElementById('view-role'),
@@ -198,44 +243,34 @@
             await setDoc(doc(db, "rooms", roomPin), { state: "waiting", questionIndex: 0, createdAt: new Date() });
             showView('teacher');
 
-            // 1. posluchač: Změny nad samotnou místností
             onSnapshot(doc(db, "rooms", roomPin), snap => { 
                 if(snap.exists()) {
                     currentRoomState = snap.data().state;
-                    // Pokud už nejsme ve stavu čekání, navždy skryjeme tlačítko "Spustit kvíz"
                     if(currentRoomState !== 'waiting') {
                         document.getElementById('btn-start-quiz').classList.add('hidden');
                     }
                 }
             });
 
-            // 2. posluchač: Změny u studentů (odpovědi, body). Tyto dva procesy už se nekříží!
             onSnapshot(collection(db, "rooms", roomPin, "students"), snapshot => {
                 const board = document.getElementById('leaderboard');
                 board.innerHTML = "";
                 let count = 0;
-                
-                // Pole pro seřazení studentů podle bodů
                 let studentsArray = [];
                 
-                snapshot.forEach(docSnap => {
-                    studentsArray.push(docSnap.data());
-                });
-
-                // Žebříček vždy rovnou řadíme od nejlepšího
+                snapshot.forEach(docSnap => { studentsArray.push(docSnap.data()); });
                 studentsArray.sort((a, b) => (b.score || 0) - (a.score || 0));
 
                 studentsArray.forEach(s => {
                     count++;
                     const div = document.createElement('div');
-                    div.className = `p-4 text-center font-bold text-2xl uppercase sharp border-4 ${s.answeredCurrent && currentRoomState === 'playing' ? 'bg-cyan text-[#004d40] border-white' : 'bg-[#00332a] border-[#00ffff] text-white'}`;
-                    div.innerHTML = `${s.name}<br><span class="text-lg font-normal text-[#f4816e]">${s.score || 0} bodů</span>`;
+                    // Přidání třídy box-brutal na kartičky studentů
+                    div.className = `p-4 text-center font-black text-2xl uppercase sharp box-brutal ${s.answeredCurrent && currentRoomState === 'playing' ? 'bg-[#00ffff]' : 'bg-white'}`;
+                    div.innerHTML = `${s.name}<br><span class="text-xl font-black text-[#f4816e] mt-2 block">${s.score || 0} bodů</span>`;
                     board.appendChild(div);
                 });
 
                 document.getElementById('students-count').innerText = count;
-                
-                // Startovací tlačítko ukaž JEN tehdy, pokud hra ještě nezačala
                 if(currentRoomState === 'waiting' && count > 0) {
                     document.getElementById('btn-start-quiz').classList.remove('hidden');
                 }
@@ -261,7 +296,6 @@
             triggerQuestion(0);
         });
 
-        // Vyhodnocení odpovědí na konci časového limitu / před další otázkou
         async function evaluateCurrentQuestion(index, type) {
             const q = quizData[index];
             const correctVal = q.correctAnswer ? q.correctAnswer.toString().toLowerCase().trim() : '';
@@ -301,7 +335,7 @@
 
         document.getElementById('btn-next-question').addEventListener('click', async () => {
             const btn = document.getElementById('btn-next-question');
-            btn.innerText = "Počítám body...";
+            btn.innerText = "Počítám...";
             btn.disabled = true;
 
             const currentType = quizData[currentQuestionIndex].type ? quizData[currentQuestionIndex].type.trim() : 'multiple-choice';
@@ -314,7 +348,6 @@
             if(currentQuestionIndex < quizData.length) {
                 triggerQuestion(currentQuestionIndex);
             } else {
-                // Přechod na závěrečnou obrazovku
                 await updateDoc(doc(db, "rooms", roomPin), { state: "finished" });
                 document.getElementById('teacher-question-view').classList.add('hidden');
                 document.getElementById('teacher-finished-view').classList.remove('hidden');
@@ -336,27 +369,27 @@
             optContainer.innerHTML = '';
 
             if(type === 'multiple-choice') {
-                optContainer.className = 'grid-4 w-full h-48';
-                const colors = ['bg-[#f4816e]', 'bg-[#00ffff]', 'bg-white', 'bg-gray-400'];
-                const textColor = ['text-[#004d40]', 'text-[#004d40]', 'text-[#004d40]', 'text-black'];
+                optContainer.className = 'grid-4 w-full h-48 mt-8';
+                const colors = ['bg-[#f4816e]', 'bg-[#00ffff]', 'bg-white', 'bg-white'];
                 const labels = ['A', 'B', 'C', 'D'];
                 let opts = q.options || ["A", "B", "C", "D"];
 
                 opts.forEach((opt, i) => {
                     const d = document.createElement('div');
-                    d.className = `sharp text-3xl p-6 ${colors[i % 4]} ${textColor[i % 4]} font-bold flex items-center justify-center uppercase`;
-                    d.innerHTML = `<span class="mr-4 text-5xl font-black opacity-50">${labels[i%4]}</span> ${opt}`;
+                    // Změna na box-brutal a tvrdé okraje u odpovědí na projektoru
+                    d.className = `box-brutal text-3xl p-6 ${colors[i % 4]} text-[#004d40] font-black flex items-center justify-start uppercase`;
+                    d.innerHTML = `<span class="mr-6 text-6xl font-black bg-[#004d40] text-white px-4 py-2 border-4 border-[#004d40]">${labels[i%4]}</span> ${opt}`;
                     optContainer.appendChild(d);
                 });
             } else if (type === 'true-false') {
-                 optContainer.className = 'grid-2 w-full h-48';
+                 optContainer.className = 'grid-2 w-full h-48 mt-8';
                  optContainer.innerHTML = `
-                    <div class="sharp text-5xl p-6 bg-[#00ffff] text-[#004d40] font-black flex items-center justify-center">PRAVDA</div>
-                    <div class="sharp text-5xl p-6 bg-[#f4816e] text-[#004d40] font-black flex items-center justify-center">NEPRAVDA</div>
+                    <div class="box-brutal text-6xl p-6 bg-[#00ffff] text-[#004d40] font-black flex items-center justify-center">PRAVDA</div>
+                    <div class="box-brutal text-6xl p-6 bg-[#f4816e] text-[#004d40] font-black flex items-center justify-center">NEPRAVDA</div>
                  `;
             } else if (type === 'text-input') {
-                 optContainer.className = 'w-full h-32 flex items-center justify-center';
-                 optContainer.innerHTML = `<div class="text-4xl text-[#00ffff] font-bold uppercase animate-pulse">Čekám na textové odpovědi...</div>`;
+                 optContainer.className = 'w-full h-32 flex items-center justify-center mt-8';
+                 optContainer.innerHTML = `<div class="text-4xl text-[#004d40] font-black uppercase animate-pulse border-b-8 border-[#f4816e] pb-4">Čekám na textové odpovědi...</div>`;
             }
         }
 
@@ -409,8 +442,7 @@
                 } else if (data.state === 'finished') {
                     document.getElementById('student-waiting').classList.remove('hidden');
                     document.getElementById('student-playing').classList.add('hidden');
-                    // Výraznější nápis pro studenta, že je po všem
-                    document.getElementById('student-waiting').innerHTML = `<h2 class="text-6xl font-black text-[#00ffff] uppercase mb-4">Konec testu!</h2><p class="text-2xl font-bold">Podívej se na projektor na výsledky.</p>`;
+                    document.getElementById('student-waiting').innerHTML = `<h2 class="text-7xl font-black text-[#004d40] title-shadow-salmon uppercase mb-6">Konec testu!</h2><p class="text-3xl font-bold text-[#004d40]">Podívej se na projektor na výsledky.</p>`;
                 }
             });
         }
@@ -421,7 +453,7 @@
             
             if(type === 'multiple-choice') {
                 area.className = 'grid-4 w-full h-[50vh]';
-                const colors = ['bg-[#f4816e]', 'bg-[#00ffff]', 'bg-white', 'bg-gray-400'];
+                const colors = ['bg-[#f4816e]', 'bg-[#00ffff]', 'bg-white', 'bg-white'];
                 const labels = ['A', 'B', 'C', 'D'];
                 for(let i=0; i<4; i++) {
                     const btn = document.createElement('button');
@@ -439,10 +471,10 @@
                 document.getElementById('btn-true').onclick = () => submitAnswer('pravda');
                 document.getElementById('btn-false').onclick = () => submitAnswer('nepravda');
             } else if (type === 'text-input') {
-                area.className = 'flex flex-col space-y-6 w-full justify-center h-[50vh]';
+                area.className = 'flex flex-col space-y-8 w-full justify-center h-[50vh]';
                 area.innerHTML = `
-                    <input type="text" id="text-answer" placeholder="NAPIŠ ODPOVĚĎ..." class="w-full p-8 text-3xl md:text-4xl sharp text-center text-[#004d40] border-4 border-[#00ffff] font-black uppercase outline-none bg-white">
-                    <button id="btn-submit-text" class="btn bg-salmon sharp w-full p-8 text-4xl hover:bg-white hover:text-[#f4816e]">ODESLAT</button>
+                    <input type="text" id="text-answer" placeholder="NAPIŠ ODPOVĚĎ..." class="w-full p-8 text-3xl md:text-4xl sharp text-center text-[#004d40] border-4 border-[#004d40] box-brutal font-black uppercase outline-none bg-white">
+                    <button id="btn-submit-text" class="btn bg-cyan sharp w-full p-8 text-4xl">ODESLAT</button>
                 `;
                 document.getElementById('btn-submit-text').onclick = () => {
                     const val = document.getElementById('text-answer').value.trim();
@@ -468,8 +500,8 @@
             const area = document.getElementById('student-input-area');
             area.className = 'flex items-center justify-center h-[50vh]';
             area.innerHTML = answerVal === -1 
-                ? `<h2 class="text-4xl font-black uppercase text-[#f4816e]">Čas vypršel!</h2>` 
-                : `<h2 class="text-4xl font-black uppercase text-[#00ffff]">Odesláno!</h2>`;
+                ? `<div class="box-brutal bg-[#f4816e] p-10"><h2 class="text-5xl font-black uppercase text-[#004d40]">Čas vypršel!</h2></div>` 
+                : `<div class="box-brutal bg-[#00ffff] p-10"><h2 class="text-5xl font-black uppercase text-[#004d40]">Odesláno!</h2></div>`;
             
             const sRef = doc(db, "rooms", roomPin, "students", studentId);
             await updateDoc(sRef, { 
