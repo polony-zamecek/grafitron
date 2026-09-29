@@ -47,6 +47,36 @@
             background-color: #ffffff;
         }
 
+        /* Vlastní brutalistický checkbox */
+        .brutal-checkbox {
+            appearance: none;
+            width: 3rem;
+            height: 3rem;
+            border: 4px solid #004d40;
+            box-shadow: 4px 4px 0px 0px #004d40;
+            background-color: #ffffff;
+            cursor: pointer;
+            position: relative;
+            transition: background-color 0.1s;
+        }
+        .brutal-checkbox:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px 0px #004d40;
+        }
+        .brutal-checkbox:checked {
+            background-color: #00ffff;
+        }
+        .brutal-checkbox:checked::after {
+            content: '✔';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2rem;
+            font-weight: 900;
+            color: #004d40;
+        }
+
         .title-shadow { text-shadow: 6px 6px 0px #00ffff; }
         .title-shadow-salmon { text-shadow: 6px 6px 0px #f4816e; }
 
@@ -92,11 +122,20 @@
             <p id="teacher-loading" class="text-3xl mb-8 animate-pulse text-[#f4816e] font-black">Připojuji se ke Google Tabulce...</p>
             
             <div id="teacher-setup-form" class="hidden w-full flex flex-col space-y-8">
-                <label class="text-2xl uppercase font-black text-[#004d40]">Vyber test z tabulky:</label>
-                <select id="select-test" class="p-6 text-3xl sharp text-[#004d40] border-4 border-[#004d40] box-brutal uppercase font-black outline-none cursor-pointer bg-white">
-                    <!-- Doplní se automaticky -->
-                </select>
-                <button id="btn-create-room" class="btn bg-salmon sharp text-3xl p-8 mt-8">Založit místnost</button>
+                <div class="w-full text-left">
+                    <label class="text-2xl uppercase font-black text-[#004d40] block mb-4">Vyber test z tabulky:</label>
+                    <select id="select-test" class="w-full p-6 text-3xl sharp text-[#004d40] border-4 border-[#004d40] box-brutal uppercase font-black outline-none cursor-pointer bg-white">
+                        <!-- Doplní se automaticky -->
+                    </select>
+                </div>
+                
+                <!-- PŘIDANÝ CHECKBOX PRO PŘIHLÁŠENÍ E-MAILEM -->
+                <div class="flex items-center justify-start space-x-6 w-full mt-4">
+                    <input type="checkbox" id="require-email-auth" class="brutal-checkbox shrink-0">
+                    <label for="require-email-auth" class="text-2xl font-black text-[#004d40] uppercase cursor-pointer select-none text-left leading-tight">Vyžadovat přihlášení e-mailem (Na známky)</label>
+                </div>
+
+                <button id="btn-create-room" class="btn bg-salmon sharp text-3xl p-8 mt-8 w-full">Založit místnost</button>
             </div>
         </div>
     </div>
@@ -212,12 +251,11 @@
             }
             showView('studentLogin');
 
-            // Pokud URL obsahuje autojoin, robot se sám přihlásí
             if(urlParams.get('autojoin') === '1') {
                 document.getElementById('student-error').innerText = "VÝVOJÁŘSKÝ BOT SE PŘIPOJUJE...";
                 setTimeout(() => {
                     document.getElementById('btn-join-room').click();
-                }, 800); // 800ms pauza, aby se stihl načíst Firebase
+                }, 800);
             }
         }
 
@@ -226,7 +264,6 @@
 
         // --- DEV REŽIM (Rychlý test) ---
         document.getElementById('btn-dev-test').addEventListener('click', async () => {
-            // Okamžitě otevřeme popup okno (prohlížeče to nezablokují, protože to vychází z kliku)
             const simWindow = window.open("", "StudentSimulator", "width=400,height=800,left=50,top=50");
             simWindow.document.write("<body style='background:#004d40; color:#00ffff; font-family:sans-serif; text-align:center; padding-top:50px;'><h1>Otevírám mobil DevBota...</h1></body>");
 
@@ -236,21 +273,18 @@
             document.getElementById('teacher-setup-form').classList.add('hidden');
 
             try {
-                // 1. Zjistit listy
                 const resS = await fetch(`${GOOGLE_SCRIPT_URL}?action=getSheets`);
                 const jsonS = await resS.json();
                 const firstSheet = jsonS.data.filter(s => s !== 'Nastavení')[0];
 
-                // 2. Stáhnout první test
                 document.getElementById('teacher-loading').innerText = `VÝVOJÁŘSKÝ REŽIM: Stahuji test "${firstSheet}"...`;
                 const resQ = await fetch(`${GOOGLE_SCRIPT_URL}?action=getQuestions&sheetName=${encodeURIComponent(firstSheet)}`);
                 const jsonQ = await resQ.json();
 
                 if(jsonQ.status === 'success' && jsonQ.data.length > 0) {
                     quizData = jsonQ.data;
-                    await setupRoom(); // Založí místnost (změní roomPin)
+                    await setupRoom();
 
-                    // 3. Přesměrovat okno robota na herní URL
                     const studentUrl = window.location.origin + window.location.pathname + `?pin=${roomPin}&name=DevBot&autojoin=1`;
                     simWindow.location.href = studentUrl;
                 } else {
@@ -312,12 +346,21 @@
             document.getElementById('room-pin-display').innerText = roomPin;
             currentRoomState = 'waiting';
             
+            // Přečtení hodnoty checkboxu a uložení do konfigurace místnosti!
+            const requiresAuth = document.getElementById('require-email-auth').checked;
+            
             new QRCode(document.getElementById('qrcode'), {
                 text: window.location.origin + window.location.pathname + "?pin=" + roomPin,
                 width: 140, height: 140, colorDark : "#004d40", colorLight : "#ffffff"
             });
 
-            await setDoc(doc(db, "rooms", roomPin), { state: "waiting", questionIndex: 0, createdAt: new Date() });
+            await setDoc(doc(db, "rooms", roomPin), { 
+                state: "waiting", 
+                questionIndex: 0, 
+                createdAt: new Date(),
+                requireAuth: requiresAuth // Zde ukládáme požadavek na email
+            });
+            
             showView('teacher');
 
             onSnapshot(doc(db, "rooms", roomPin), snap => { 
