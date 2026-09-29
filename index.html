@@ -48,15 +48,8 @@
         }
 
         .brutal-checkbox {
-            appearance: none;
-            width: 3rem;
-            height: 3rem;
-            border: 4px solid #004d40;
-            box-shadow: 4px 4px 0px 0px #004d40;
-            background-color: #ffffff;
-            cursor: pointer;
-            position: relative;
-            transition: background-color 0.1s;
+            appearance: none; width: 3rem; height: 3rem; border: 4px solid #004d40; box-shadow: 4px 4px 0px 0px #004d40;
+            background-color: #ffffff; cursor: pointer; position: relative; transition: background-color 0.1s;
         }
         .brutal-checkbox:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0px 0px #004d40; }
         .brutal-checkbox:checked { background-color: #00ffff; }
@@ -67,6 +60,7 @@
 
         .title-shadow { text-shadow: 6px 6px 0px #00ffff; }
         .title-shadow-salmon { text-shadow: 6px 6px 0px #f4816e; }
+        .title-shadow-white { text-shadow: 6px 6px 0px #ffffff; }
 
         .bg-salmon { background-color: #f4816e; color: #004d40; }
         .bg-cyan { background-color: #00ffff; color: #004d40; }
@@ -87,9 +81,8 @@
             <button id="btn-role-teacher" class="btn bg-cyan sharp text-3xl md:text-5xl">Učitel</button>
             <button id="btn-role-student" class="btn bg-salmon sharp text-3xl md:text-5xl">Student</button>
         </div>
-        
-        <button id="btn-dev-test" class="mt-12 text-xl font-bold border-b-4 border-[#004d40] text-[#004d40] hover:text-[#f4816e] hover:border-[#f4816e] transition-all cursor-pointer">
-            🛠 Rychlý vývojářský test (Automaticky vytvoří hru a bota)
+        <button id="btn-dev-test" class="mt-12 text-xl font-bold border-b-4 border-[#004d40] text-[#004d40] hover:text-[#f4816e] transition-all cursor-pointer">
+            🛠 Rychlý vývojářský test
         </button>
     </div>
 
@@ -112,68 +105,67 @@
                 <div class="w-full text-left">
                     <label class="text-2xl uppercase font-black text-[#004d40] block mb-4">Vyber test z tabulky:</label>
                     <select id="select-test" class="w-full p-6 text-3xl sharp text-[#004d40] border-4 border-[#004d40] box-brutal uppercase font-black outline-none cursor-pointer bg-white">
-                        <!-- Doplní se automaticky -->
                     </select>
                 </div>
-                
                 <div class="flex items-center justify-start space-x-6 w-full mt-4">
                     <input type="checkbox" id="require-email-auth" class="brutal-checkbox shrink-0">
                     <label for="require-email-auth" class="text-2xl font-black text-[#004d40] uppercase cursor-pointer select-none text-left leading-tight">Vyžadovat přihlášení e-mailem (Na známky)</label>
                 </div>
-
                 <button id="btn-create-room" class="btn bg-salmon sharp text-3xl p-8 mt-8 w-full">Založit místnost</button>
             </div>
         </div>
     </div>
 
-    <!-- 3. OBRAZOVKA: UČITEL - LOBBY A HRA -->
+    <!-- 3. OBRAZOVKA: UČITEL - DASHBOARD (Velín) -->
     <div id="view-teacher" class="hidden flex-1 flex-col w-full max-w-7xl mx-auto mt-2">
         
-        <!-- FÁZE 1: ČEKÁRNA (Skryje se po zahájení testu) -->
+        <!-- FÁZE 1: ČEKÁRNA (Kompaktní) -->
         <div id="teacher-lobby-header">
             <div class="flex justify-between items-center mb-8 pb-6 border-b-8 border-[#004d40]">
                 <div>
-                    <h2 class="text-3xl font-black uppercase text-[#004d40] tracking-widest mb-2">Připoj se na mobilu! PIN:</h2>
-                    <div id="room-pin-display" class="text-7xl md:text-9xl font-black text-[#f4816e] title-shadow tracking-widest">------</div>
+                    <h2 class="text-2xl font-black uppercase text-[#004d40] tracking-widest mb-1">Místnost založena! PIN:</h2>
+                    <div id="room-pin-display" class="text-6xl font-black text-[#f4816e] title-shadow tracking-widest mb-4">------</div>
+                    <!-- NOVÉ TLAČÍTKO PRO PROJEKTOR -->
+                    <button id="btn-open-projector" class="btn bg-[#00ffff] sharp px-6 py-3 text-xl hover:bg-white transition-colors">
+                        ↗ Otevřít okno pro projektor
+                    </button>
                 </div>
-                <div class="box-brutal p-4 bg-white">
-                    <div id="qrcode"></div>
+                <div class="text-right">
+                    <h3 class="text-3xl font-black uppercase text-[#004d40] mb-4">Připojeno: <span id="lobby-students-count" class="text-[#f4816e] text-5xl">0</span></h3>
+                    <button id="btn-start-quiz" class="btn bg-salmon sharp px-8 py-4 text-2xl hidden">Spustit kvíz</button>
                 </div>
             </div>
+        </div>
 
-            <div class="flex justify-between items-center mb-10 box-brutal bg-cyan p-8">
-                <h3 class="text-4xl font-black uppercase text-[#004d40]"><span id="lobby-students-count" class="text-[#f4816e] text-6xl mr-2">0</span> Studentů v místnosti</h3>
-                <button id="btn-start-quiz" class="btn bg-salmon sharp px-12 py-6 text-4xl hidden">Spustit kvíz</button>
+        <!-- FÁZE 2: HERNÍ HLAVIČKA -->
+        <div id="teacher-quiz-header" class="hidden flex justify-between items-center mb-6 box-brutal bg-[#004d40] p-4 text-white">
+            <div class="text-2xl font-black uppercase px-4 flex items-center">
+                Odpovědělo: <span id="answered-count" class="text-[#004d40] bg-[#00ffff] px-3 py-1 ml-4 border-2 border-[#00ffff]">0</span><span class="mx-2">/</span><span id="total-count">0</span>
+            </div>
+            <button id="btn-next-question" class="btn bg-white text-[#004d40] sharp px-6 py-3 text-xl transition-colors duration-200">Vyhodnotit a další ➔</button>
+        </div>
+
+        <!-- ZMENŠENÁ OTÁZKA (Dashboard pohled) -->
+        <div id="teacher-question-view" class="hidden mb-8 box-brutal bg-gray-100 p-6 flex flex-col md:flex-row gap-6">
+            <div class="flex-1">
+                <h2 class="text-sm font-bold uppercase text-gray-500 mb-2">Právě se zobrazuje na projektoru:</h2>
+                <!-- Zmenšené texty -->
+                <h2 id="teacher-question-text" class="text-3xl font-black mb-4 text-[#004d40] leading-tight"></h2>
+                <div id="teacher-options" class="w-full"></div>
+            </div>
+            <div class="w-48 shrink-0 flex items-center justify-center border-l-4 border-dashed border-gray-300 pl-6">
+                <img id="teacher-question-image" src="" class="max-h-32 hidden border-2 border-[#004d40] object-contain">
             </div>
         </div>
 
-        <!-- FÁZE 2: HERNÍ HLAVIČKA (Zobrazí se po zahájení testu) -->
-        <div id="teacher-quiz-header" class="hidden flex justify-between items-center mb-8 box-brutal bg-white border-b-8 border-[#004d40] p-4">
-            <div class="text-3xl font-black text-[#004d40] uppercase px-4">
-                Odpovědělo: <span id="answered-count" class="text-[#00ffff] bg-[#004d40] px-3 py-1">0</span> / <span id="total-count">0</span>
-            </div>
-            <!-- Tlačítko Další otázka, které se chytře obarvuje -->
-            <button id="btn-next-question" class="btn bg-white sharp px-8 py-4 text-2xl transition-colors duration-200">Vyhodnotit a další ➔</button>
+        <!-- ZÁVĚREČNÁ OBRAZOVKA (Kompaktní) -->
+        <div id="teacher-finished-view" class="hidden mb-8 text-center box-brutal bg-[#00ffff] p-8">
+            <h2 class="text-4xl font-black text-[#004d40] uppercase">Konec testu!</h2>
         </div>
 
-        <!-- DOMINANTNÍ ZOBRAZENÍ OTÁZKY -->
-        <div id="teacher-question-view" class="hidden mb-10 text-center box-brutal bg-white p-12">
-            <!-- Zvětšeno na text-6xl pro lepší čitelnost z dálky -->
-            <h2 id="teacher-question-text" class="text-6xl font-black mb-10 text-[#004d40] leading-tight"></h2>
-            <img id="teacher-question-image" src="" alt="Obrázek k otázce" class="max-h-96 mx-auto mb-10 hidden border-4 border-[#004d40] box-shadow-brutal object-contain">
-            <div id="teacher-options" class="w-full"></div>
-        </div>
-
-        <!-- ZÁVĚREČNÁ OBRAZOVKA -->
-        <div id="teacher-finished-view" class="hidden mb-12 text-center box-brutal bg-[#00ffff] p-16">
-            <h2 class="text-7xl font-black text-[#004d40] title-shadow-salmon uppercase mb-6">Konec testu!</h2>
-            <p class="text-3xl font-bold text-[#004d40] mb-8">Díky za hru. Níže najdete finální pořadí.</p>
-        </div>
-
-        <!-- ŽEBŘÍČEK (Stále dole, přizpůsobený pro 18 studentů) -->
+        <!-- ŽEBŘÍČEK (Stále dole, pro přehled učitele) -->
         <div id="teacher-leaderboard-section">
-            <h3 id="leaderboard-title" class="text-2xl font-black uppercase text-[#004d40] mb-4 inline-block bg-[#00ffff] px-4 py-2 border-4 border-[#004d40]">Stav třídy:</h3>
-            <!-- grid-cols-6 znamená, že 18 dětí se poskládá do 3 úhledných řad -->
+            <h3 id="leaderboard-title" class="text-xl font-black uppercase text-[#004d40] mb-4 inline-block bg-[#00ffff] px-4 py-2 border-4 border-[#004d40]">Stav třídy:</h3>
             <div id="leaderboard" class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-4"></div>
         </div>
     </div>
@@ -199,11 +191,41 @@
             <div class="mb-8 w-full bg-white box-brutal h-12 sharp relative p-1 shrink-0">
                 <div id="time-bar" class="bg-[#f4816e] h-full transition-all ease-linear border-r-4 border-[#004d40]" style="width: 100%;"></div>
             </div>
-            
-            <div id="student-input-area" class="flex-1 w-full pb-8">
-                <!-- Tlačítka se vygenerují dynamicky -->
-            </div>
+            <div id="student-input-area" class="flex-1 w-full pb-8"></div>
         </div>
+    </div>
+
+    <!-- 6. OBRAZOVKA: PROJEKTOR (NOVÁ) -->
+    <div id="view-projector" class="hidden flex-1 flex-col w-full h-screen mx-auto overflow-hidden bg-white">
+        
+        <!-- Fáze 1: Čekárna Projektor -->
+        <div id="proj-lobby" class="flex flex-col items-center justify-center h-full space-y-12">
+            <h1 class="text-6xl font-black uppercase text-[#004d40] tracking-widest bg-[#00ffff] px-8 py-4 border-8 border-[#004d40]">Připojte se do hry!</h1>
+            <div class="flex items-center space-x-20">
+                <div class="text-center">
+                    <p class="text-5xl font-black text-[#004d40] mb-4">PIN MÍSTNOSTI:</p>
+                    <div id="proj-pin-display" class="text-[10rem] font-black text-[#f4816e] title-shadow leading-none tracking-widest">------</div>
+                </div>
+                <div class="box-brutal p-8 bg-white border-8 border-[#004d40]">
+                    <div id="proj-qrcode"></div>
+                </div>
+            </div>
+            <p class="text-4xl font-black text-[#004d40] mt-12 animate-pulse">Čekáme na spuštění testu učitelem...</p>
+        </div>
+
+        <!-- Fáze 2: Hra Projektor -->
+        <div id="proj-game" class="hidden flex-col items-center justify-center h-full p-12 w-full max-w-7xl mx-auto">
+            <h2 id="proj-question-text" class="text-6xl lg:text-7xl font-black mb-16 text-[#004d40] leading-tight text-center"></h2>
+            <img id="proj-question-image" src="" class="max-h-96 mx-auto mb-16 hidden border-8 border-[#004d40] box-shadow-brutal object-contain">
+            <div id="proj-options" class="w-full"></div>
+        </div>
+
+        <!-- Fáze 3: Konec Projektor -->
+        <div id="proj-end" class="hidden flex-col items-center justify-start h-full p-16 w-full max-w-7xl mx-auto pt-24">
+            <h2 class="text-[6rem] font-black text-[#004d40] title-shadow-salmon uppercase mb-16">Gratulujeme vítězům!</h2>
+            <div id="proj-leaderboard" class="w-full flex flex-col space-y-6"></div>
+        </div>
+
     </div>
 
     <script type="module">
@@ -224,7 +246,6 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw3okFjuvMe7LXCnOeqkDh8yTrQIc6UizWpr8pTq-zNsvQDLyTU4YeRMB5eMW9VOpHQ/exec";
-
         const TEACHER_PASSWORD = "zamecek";
 
         let currentRole = null, roomPin = null, studentId = null;
@@ -238,7 +259,8 @@
             teacherSetup: document.getElementById('view-teacher-setup'),
             teacher: document.getElementById('view-teacher'),
             studentLogin: document.getElementById('view-student'),
-            studentGame: document.getElementById('view-student-game')
+            studentGame: document.getElementById('view-student-game'),
+            projector: document.getElementById('view-projector')
         };
 
         function showView(viewName) {
@@ -247,13 +269,17 @@
         }
 
         const urlParams = new URLSearchParams(window.location.search);
-        if(urlParams.has('pin')) {
+        
+        // Záchyt PROJEKTORU (Zcela nový režim!)
+        if(urlParams.has('projector')) {
+            roomPin = urlParams.get('projector');
+            setupProjectorMode();
+        } 
+        // Záchyt STUDENTA
+        else if(urlParams.has('pin')) {
             document.getElementById('student-pin').value = urlParams.get('pin');
-            if(urlParams.has('name')) {
-                document.getElementById('student-name').value = urlParams.get('name');
-            }
+            if(urlParams.has('name')) document.getElementById('student-name').value = urlParams.get('name');
             showView('studentLogin');
-
             if(urlParams.get('autojoin') === '1') {
                 document.getElementById('student-error').innerText = "VÝVOJÁŘSKÝ BOT SE PŘIPOJUJE...";
                 setTimeout(() => { document.getElementById('btn-join-room').click(); }, 800);
@@ -263,6 +289,7 @@
         document.getElementById('btn-back-to-role').addEventListener('click', () => showView('role'));
         document.getElementById('btn-back-to-role-student').addEventListener('click', () => showView('role'));
 
+        // --- DEV REŽIM ---
         document.getElementById('btn-dev-test').addEventListener('click', async () => {
             const simWindow = window.open("", "StudentSimulator", "width=400,height=800,left=50,top=50");
             simWindow.document.write("<body style='background:#004d40; color:#00ffff; font-family:sans-serif; text-align:center; padding-top:50px;'><h1>Otevírám mobil DevBota...</h1></body>");
@@ -286,14 +313,8 @@
                     await setupRoom();
                     const studentUrl = window.location.origin + window.location.pathname + `?pin=${roomPin}&name=DevBot&autojoin=1`;
                     simWindow.location.href = studentUrl;
-                } else {
-                    document.getElementById('teacher-loading').innerText = "CHYBA: Tabulka je prázdná.";
-                    simWindow.close();
                 }
-            } catch (e) {
-                document.getElementById('teacher-loading').innerText = "CHYBA SPOJENÍ!";
-                simWindow.close();
-            }
+            } catch (e) {}
         });
 
 
@@ -319,12 +340,8 @@
                         document.getElementById('teacher-loading').classList.add('hidden');
                         document.getElementById('teacher-setup-form').classList.remove('hidden');
                     }
-                } catch (e) {
-                    document.getElementById('teacher-loading').innerText = "CHYBA: Nelze se spojit s Tabulkou!";
-                }
-            } else {
-                document.getElementById('teacher-login-error').innerText = "NESPRÁVNÉ HESLO!";
-            }
+                } catch (e) {}
+            } else { document.getElementById('teacher-login-error').innerText = "NESPRÁVNÉ HESLO!"; }
         });
 
         document.getElementById('btn-create-room').addEventListener('click', async () => {
@@ -337,7 +354,7 @@
                     quizData = json.data;
                     setupRoom();
                 } else btn.innerText = "CHYBA: TEST JE PRÁZDNÝ";
-            } catch (e) { btn.innerText = "CHYBA SPOJENÍ"; }
+            } catch (e) {}
         });
 
         async function setupRoom() {
@@ -347,10 +364,10 @@
             
             const requiresAuth = document.getElementById('require-email-auth').checked;
             
-            new QRCode(document.getElementById('qrcode'), {
-                text: window.location.origin + window.location.pathname + "?pin=" + roomPin,
-                width: 140, height: 140, colorDark : "#004d40", colorLight : "#ffffff"
-            });
+            // Nastavení odkazu pro tlačítko "Otevřít projektor"
+            document.getElementById('btn-open-projector').onclick = () => {
+                window.open(window.location.origin + window.location.pathname + "?projector=" + roomPin, "_blank");
+            };
 
             await setDoc(doc(db, "rooms", roomPin), { 
                 state: "waiting", 
@@ -382,29 +399,25 @@
                     if(s.answeredCurrent && currentRoomState === 'playing') answeredCount++;
                     
                     const div = document.createElement('div');
-                    // Kartička zmenšená z text-2xl na text-lg/xl, aby se jich vešlo 18 elegantně
                     div.className = `p-3 text-center font-black text-xl uppercase sharp box-brutal ${s.answeredCurrent && currentRoomState === 'playing' ? 'bg-[#00ffff]' : 'bg-white'}`;
-                    div.innerHTML = `${s.name}<br><span class="text-lg font-black text-[#f4816e] mt-1 block">${s.score || 0} b.</span>`;
+                    div.innerHTML = `${s.name}<br><span class="text-sm font-black text-[#f4816e] mt-1 block">${s.score || 0} b.</span>`;
                     board.appendChild(div);
                 });
 
-                // Aktualizace počtů
                 document.getElementById('lobby-students-count').innerText = count;
                 document.getElementById('total-count').innerText = count;
                 document.getElementById('answered-count').innerText = answeredCount;
 
-                // Zobrazení tlačítka Start v Lobby
                 if(currentRoomState === 'waiting' && count > 0) {
                     document.getElementById('btn-start-quiz').classList.remove('hidden');
                 }
 
-                // Logika pro obarvení tlačítka "Další otázka", když všichni odpoví
                 const btnNext = document.getElementById('btn-next-question');
                 if (currentRoomState === 'playing' && count > 0 && answeredCount === count) {
                     btnNext.classList.remove('bg-white', 'text-[#004d40]');
-                    btnNext.classList.add('bg-salmon', 'text-white', 'animate-pulse');
+                    btnNext.classList.add('bg-salmon', 'text-white', 'animate-pulse', 'border-[#f4816e]');
                 } else {
-                    btnNext.classList.remove('bg-salmon', 'text-white', 'animate-pulse');
+                    btnNext.classList.remove('bg-salmon', 'text-white', 'animate-pulse', 'border-[#f4816e]');
                     btnNext.classList.add('bg-white', 'text-[#004d40]');
                 }
             });
@@ -420,17 +433,16 @@
                 questionType: type,
                 questionText: q.text || "",
                 questionOptions: q.options || [],
+                questionImage: q.image || "", // Aby to viděl i projektor
                 forceReset: Math.random()
             });
-            showTeacherQuestion(index, type);
+            showTeacherQuestion(index, type); // Ukaž zmenšeninu na panelu
         }
 
         document.getElementById('btn-start-quiz').addEventListener('click', () => {
-            // Skryje lobby a ukáže herní hlavičku
             document.getElementById('teacher-lobby-header').classList.add('hidden');
             document.getElementById('teacher-quiz-header').classList.remove('hidden');
             document.getElementById('leaderboard-title').innerText = "Stav odpovědí:";
-            
             triggerQuestion(0);
         });
 
@@ -452,7 +464,6 @@
                 if (s.answeredCurrent && s.lastAnswer) {
                     let isCorrect = false;
                     let sAnswer = s.lastAnswer.toString().toLowerCase().trim();
-
                     if (type === 'multiple-choice') {
                         let textAnswer = labelToText[s.lastAnswer.toUpperCase()];
                         if (textAnswer === correctVal) isCorrect = true;
@@ -473,8 +484,6 @@
 
         document.getElementById('btn-next-question').addEventListener('click', async () => {
             const btn = document.getElementById('btn-next-question');
-            
-            // Dočasný reset tlačítka během počítání
             btn.classList.remove('bg-salmon', 'text-white', 'animate-pulse');
             btn.classList.add('bg-white', 'text-[#004d40]');
             btn.innerText = "Počítám...";
@@ -498,9 +507,11 @@
             }
         });
 
+        // VYKRESLENÍ ZMENŠENINY PRO UČITELE
         function showTeacherQuestion(index, type) {
             const q = quizData[index];
             document.getElementById('teacher-question-view').classList.remove('hidden');
+            // Menší text
             document.getElementById('teacher-question-text').innerText = q.text;
             
             const imgEl = document.getElementById('teacher-question-image');
@@ -511,27 +522,116 @@
             optContainer.innerHTML = '';
 
             if(type === 'multiple-choice') {
-                optContainer.className = 'grid-4 w-full h-48 mt-8';
+                optContainer.className = 'grid-2 w-full mt-4';
                 const colors = ['bg-[#f4816e]', 'bg-[#00ffff]', 'bg-white', 'bg-white'];
                 const labels = ['A', 'B', 'C', 'D'];
                 let opts = q.options || ["A", "B", "C", "D"];
 
                 opts.forEach((opt, i) => {
                     const d = document.createElement('div');
-                    d.className = `box-brutal text-3xl p-6 ${colors[i % 4]} text-[#004d40] font-black flex items-center justify-start uppercase`;
-                    d.innerHTML = `<span class="mr-6 text-6xl font-black bg-[#004d40] text-white px-4 py-2 border-4 border-[#004d40] shrink-0">${labels[i%4]}</span> <span class="text-left">${opt}</span>`;
+                    // Kompaktní kartičky
+                    d.className = `box-brutal text-lg p-2 ${colors[i % 4]} text-[#004d40] font-black flex items-center justify-start uppercase`;
+                    d.innerHTML = `<span class="mr-3 text-xl font-black bg-[#004d40] text-white px-2 py-1">${labels[i%4]}</span> <span>${opt}</span>`;
                     optContainer.appendChild(d);
                 });
             } else if (type === 'true-false') {
-                 optContainer.className = 'grid-2 w-full h-48 mt-8';
+                 optContainer.className = 'grid-2 w-full mt-4';
                  optContainer.innerHTML = `
-                    <div class="box-brutal text-6xl p-6 bg-[#00ffff] text-[#004d40] font-black flex items-center justify-center">PRAVDA</div>
-                    <div class="box-brutal text-6xl p-6 bg-[#f4816e] text-[#004d40] font-black flex items-center justify-center">NEPRAVDA</div>
+                    <div class="box-brutal text-2xl p-4 bg-[#00ffff] text-[#004d40] font-black text-center">PRAVDA</div>
+                    <div class="box-brutal text-2xl p-4 bg-[#f4816e] text-[#004d40] font-black text-center">NEPRAVDA</div>
                  `;
             } else if (type === 'text-input') {
-                 optContainer.className = 'w-full h-32 flex items-center justify-center mt-8';
-                 optContainer.innerHTML = `<div class="text-4xl text-[#004d40] font-black uppercase animate-pulse border-b-8 border-[#f4816e] pb-4">Čekám na textové odpovědi...</div>`;
+                 optContainer.innerHTML = `<div class="text-xl text-[#004d40] font-black uppercase border-b-4 border-[#f4816e] pb-2 mt-4">Formát: Textové pole na telefonech</div>`;
             }
+        }
+
+
+        // --- LOGIKA PROJEKTORU (Zobrazuje se ve druhém okně) ---
+        function setupProjectorMode() {
+            showView('projector');
+            document.getElementById('proj-pin-display').innerText = roomPin;
+            
+            new QRCode(document.getElementById('proj-qrcode'), {
+                text: window.location.origin + window.location.pathname + "?pin=" + roomPin,
+                width: 200, height: 200, colorDark : "#004d40", colorLight : "#ffffff"
+            });
+
+            onSnapshot(doc(db, "rooms", roomPin), snap => {
+                const data = snap.data();
+                if(!data) return;
+
+                if(data.state === 'waiting') {
+                    document.getElementById('proj-lobby').classList.remove('hidden');
+                    document.getElementById('proj-game').classList.add('hidden');
+                    document.getElementById('proj-end').classList.add('hidden');
+                } 
+                else if(data.state === 'playing') {
+                    document.getElementById('proj-lobby').classList.add('hidden');
+                    document.getElementById('proj-game').classList.replace('hidden', 'flex');
+                    document.getElementById('proj-end').classList.add('hidden');
+
+                    // Vykreslení obří otázky
+                    document.getElementById('proj-question-text').innerText = data.questionText;
+                    const imgEl = document.getElementById('proj-question-image');
+                    if(data.questionImage) {
+                        imgEl.src = data.questionImage;
+                        imgEl.classList.remove('hidden');
+                    } else {
+                        imgEl.classList.add('hidden');
+                    }
+
+                    const optContainer = document.getElementById('proj-options');
+                    optContainer.innerHTML = '';
+                    
+                    if(data.questionType === 'multiple-choice') {
+                        optContainer.className = 'grid-4 w-full';
+                        const colors = ['bg-[#f4816e]', 'bg-[#00ffff]', 'bg-white', 'bg-white'];
+                        const labels = ['A', 'B', 'C', 'D'];
+                        let opts = data.questionOptions || ["A", "B", "C", "D"];
+
+                        opts.forEach((opt, i) => {
+                            const d = document.createElement('div');
+                            d.className = `box-brutal text-4xl lg:text-5xl p-8 ${colors[i % 4]} text-[#004d40] font-black flex items-center justify-start uppercase`;
+                            d.innerHTML = `<span class="mr-6 text-7xl font-black bg-[#004d40] text-white px-6 py-2 border-4 border-[#004d40] shrink-0">${labels[i%4]}</span> <span class="text-left">${opt}</span>`;
+                            optContainer.appendChild(d);
+                        });
+                    } else if (data.questionType === 'true-false') {
+                         optContainer.className = 'grid-2 w-full mt-12';
+                         optContainer.innerHTML = `
+                            <div class="box-brutal text-[5rem] p-12 bg-[#00ffff] text-[#004d40] font-black flex items-center justify-center">PRAVDA</div>
+                            <div class="box-brutal text-[5rem] p-12 bg-[#f4816e] text-[#004d40] font-black flex items-center justify-center">NEPRAVDA</div>
+                         `;
+                    } else if (data.questionType === 'text-input') {
+                         optContainer.className = 'w-full flex items-center justify-center mt-12';
+                         optContainer.innerHTML = `<div class="text-5xl text-[#004d40] font-black uppercase animate-pulse border-b-8 border-[#f4816e] pb-6">Zadejte přesnou odpověď na svém zařízení</div>`;
+                    }
+                } 
+                else if (data.state === 'finished') {
+                    document.getElementById('proj-game').classList.replace('flex', 'hidden');
+                    document.getElementById('proj-end').classList.replace('hidden', 'flex');
+                }
+            });
+
+            // Vykreslení obřího žebříčku pro projektor na konci hry
+            onSnapshot(collection(db, "rooms", roomPin, "students"), snapshot => {
+                const board = document.getElementById('proj-leaderboard');
+                board.innerHTML = "";
+                let studentsArray = [];
+                snapshot.forEach(docSnap => { studentsArray.push(docSnap.data()); });
+                studentsArray.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+                studentsArray.forEach((s, index) => {
+                    const div = document.createElement('div');
+                    // První 3 místa jsou zvýrazněná
+                    let bg = 'bg-white';
+                    if(index === 0) bg = 'bg-[#00ffff]';
+                    if(index === 1 || index === 2) bg = 'bg-[#f4816e]';
+                    
+                    div.className = `flex justify-between items-center p-6 box-brutal ${bg} border-8 border-[#004d40]`;
+                    div.innerHTML = `<span class="text-4xl font-black uppercase text-[#004d40]">${index + 1}. ${s.name}</span><span class="text-5xl font-black text-[#004d40]">${s.score || 0}</span>`;
+                    board.appendChild(div);
+                });
+            });
         }
 
         // --- STUDENT ---
@@ -557,7 +657,7 @@
                 await setDoc(doc(db, "rooms", roomPin, "students", studentId), { name, score: 0, answeredCurrent: false });
                 showView('studentGame');
                 listenToRoom();
-            } catch (e) { err.innerText = "Chyba připojení."; }
+            } catch (e) {}
         });
 
         let lastReset = null;
