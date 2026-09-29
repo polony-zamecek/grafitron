@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grafitron Kvíz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- Spolehlivější knihovna pro generování QR kódů přes jsDelivr -->
+    <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
+    <style>
+        body { 
+            font-family: 'Montserrat', sans-serif; 
+            background-color: #f0f0f0; 
+            color: #004d40; 
+            overflow-x: hidden;
+        }
+        .swiss-border { border: 4px solid #004d40; }
+        .swiss-border-b { border-bottom: 4px solid #004d40; }
+        .swiss-btn { 
+            background-color: #f4816e; 
+            color: #004d40; 
+            font-weight: 900; 
+            text-transform: uppercase;
+            border: 4px solid #004d40;
+            transition: all 0.15s ease-out;
+            cursor: pointer;
+            box-shadow: 6px 6px 0px #004d40;
+        }
+        .swiss-btn:hover { 
+            background-color: #00ffff; 
+            transform: translate(-2px, -2px); 
+            box-shadow: 8px 8px 0px #004d40; 
+        }
+        .swiss-btn:active { 
+            transform: translate(6px, 6px); 
+            box-shadow: 0px 0px 0px #004d40; 
+        }
+        .swiss-input {
+            border: 4px solid #004d40;
+            background-color: white;
+            color: #004d40;
+            font-weight: 700;
+            border-radius: 0;
+            outline: none;
+            padding: 1rem;
+            width: 100%;
+            box-shadow: 6px 6px 0px #004d40;
+        }
+        .swiss-input:focus { background-color: #00ffff; }
+        .bg-swiss-dark { background-color: #004d40; color: white; }
+        .bg-swiss-cyan { background-color: #00ffff; color: #004d40; }
+        .bg-swiss-salmon { background-color: #f4816e; color: #004d40; }
+        
+        .swiss-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        @media (max-width: 768px) {
+            .swiss-grid { grid-template-columns: 1fr; }
+        }
+        
+        /* QR kód styling */
+        #qrcode img {
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <header class="bg-swiss-dark p-6 swiss-border-b flex justify-between items-center">
+        <h1 class="text-3xl font-black uppercase tracking-tighter">GRAFITRON Kvíz</h1>
+        <div id="room-indicator" class="hidden text-xl font-bold bg-swiss-cyan text-swiss-dark px-4 py-1 swiss-border">
+            PIN: <span id="room-pin-display">---</span>
+        </div>
+    </header>
+
+    <main id="app-container" class="flex-grow flex flex-col p-6 max-w-6xl mx-auto w-full">
+        
+        <div id="view-menu" class="flex flex-col md:flex-row gap-8 m-auto w-full max-w-3xl">
+            <button id="btn-role-teacher" class="swiss-btn flex-1 py-16 text-4xl bg-swiss-cyan">JSEM UČITEL</button>
+            <button id="btn-role-student" class="swiss-btn flex-1 py-16 text-4xl">JSEM STUDENT</button>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- UČITELSKÉ ROZHRANÍ -->
+        <!-- ========================================== -->
+        <div id="view-teacher" class="hidden flex-col h-full w-full">
+            
+            <div id="teacher-lobby" class="flex flex-col items-center justify-center flex-grow text-center">
+                <h2 class="text-5xl font-black mb-4">PŘIPOJTE SE</h2>
+                <div class="flex flex-col md:flex-row gap-8 items-center justify-center mb-12">
+                    <div class="flex flex-col items-center">
+                        <p class="text-xl font-bold mb-2 uppercase">Zadejte PIN na webu:</p>
+                        <div id="display-pin" class="text-8xl font-black bg-white p-8 swiss-border tracking-widest shadow-[12px_12px_0px_#004d40]">------</div>
+                    </div>
+                    <div class="text-4xl font-black text-gray-400">NEBO</div>
+                    <div class="flex flex-col items-center">
+                        <p class="text-xl font-bold mb-2 uppercase">Naskenujte QR kód:</p>
+                        <div id="qrcode" class="bg-white p-4 swiss-border shadow-[12px_12px_0px_#004d40]"></div>
+                    </div>
+                </div>
+                <button id="btn-start-quiz" class="swiss-btn px-12 py-6 text-3xl bg-swiss-cyan">SPUSTIT KVÍZ &rarr;</button>
+            </div>
+
+            <div id="teacher-game" class="hidden flex-col flex-grow relative">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 border-b-4 border-[#004d40] pb-6">
+                    <h3 class="text-4xl font-black">OTÁZKA <span id="teacher-q-index">1</span>/<span id="teacher-q-total">3</span></h3>
+                    <button id="btn-next-question" class="swiss-btn px-8 py-4 text-2xl bg-swiss-cyan animate-pulse w-full md:w-auto">DALŠÍ OTÁZKA &rarr;</button>
+                </div>
+                <div class="flex-grow flex flex-col items-center justify-center">
+                    <img id="teacher-question-image" class="hidden mb-8 max-h-64 object-contain swiss-border shadow-[8px_8px_0px_#004d40]" src="" alt="Obrázek k otázce">
+                    <h2 id="teacher-question-text" class="text-4xl md:text-6xl font-black text-center mb-12 uppercase"></h2>
+                </div>
+            </div>
+
+            <div id="teacher-leaderboard" class="mt-8 bg-white swiss-border p-6 shadow-[8px_8px_0px_#004d40]">
+                <h3 class="text-2xl font-black border-b-4 border-[#004d40] pb-2 mb-4 uppercase">Výsledky v reálném čase</h3>
+                <ul id="leaderboard-list" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <li class="text-xl">Čekám na hráče...</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- STUDENTSKÉ ROZHRANÍ -->
+        <!-- ========================================== -->
+        <div id="view-student" class="hidden flex-col h-full w-full max-w-xl mx-auto">
+            
+            <div id="student-login" class="flex flex-col gap-6 m-auto w-full">
+                <h2 class="text-4xl font-black uppercase text-center mb-4">Vstup do hry</h2>
+                <input type="text" id="input-pin" class="swiss-input text-3xl uppercase text-center font-black tracking-widest" placeholder="PIN MÍSTNOSTI">
+                <input type="text" id="input-name" class="swiss-input text-3xl text-center font-black" placeholder="TVOJE JMÉNO">
+                <button id="btn-join-room" class="swiss-btn py-6 text-3xl bg-swiss-cyan mt-4">VSTOUPIT</button>
+            </div>
+
+            <div id="student-waiting" class="hidden flex-col items-center justify-center flex-grow text-center">
+                <div class="animate-spin w-16 h-16 border-8 border-[#004d40] border-t-swiss-cyan mb-8"></div>
+                <h2 id="student-waiting-msg" class="text-4xl font-black uppercase">Čekám na učitele...</h2>
+                <p class="text-xl mt-4 font-bold">Koukej na projektor!</p>
+            </div>
+
+            <div id="student-question" class="hidden flex-col flex-grow">
+                <h3 class="text-2xl font-black mb-6 uppercase text-center">Vyber správnou odpověď:</h3>
+                <div id="student-options" class="swiss-grid flex-grow">
+                    <!-- Tlačítka se vygenerují přes JS -->
+                </div>
+            </div>
+            
+            <div id="student-score-panel" class="hidden mt-8 text-center font-black text-2xl">
+                Tvoje skóre: <span id="student-score-display" class="text-swiss-salmon">0</span>
+            </div>
+        </div>
+
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Tvoje Firebase konfigurace pro Grafitron!
+        const firebaseConfig = {
+            apiKey: "AIzaSyChRc14OD5Ca8KLxWMyRTy1zQnd3-j6O8w",
+            authDomain: "grafitron-110b5.firebaseapp.com",
+            projectId: "grafitron-110b5",
+            storageBucket: "grafitron-110b5.firebasestorage.app",
+            messagingSenderId: "593241952769",
+            appId: "1:593241952769:web:697e9a2059d96d33d72600"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        const roomsPath = `rooms`;
+        const playersPath = `players`;
+
+        const quizData = [
+            {
+                type: "multiple-choice",
+                question: "Které písmo nemá patičky?",
+                options: ["Arial", "Times New Roman", "Garamond", "Georgia"],
+                correctIndex: 0,
+                image: "https://placehold.co/800x400/f4816e/004d40?text=Patky+vs+Bez+Patek"
+            },
+            {
+                type: "true-false",
+                question: "Vektorová grafika ztrácí kvalitu při zvětšení.",
+                options: ["PRAVDA", "NEPRAVDA"],
+                correctIndex: 1,
+                image: null 
+            },
+            {
+                type: "text-input",
+                question: "Napište zkratku barevného modelu pro monitory:",
+                acceptedAnswers: ["rgb", "r g b"],
+                image: "https://placehold.co/800x400/00ffff/004d40?text=Monitory"
+            }
+        ];
+
+        let currentRoomId = null; 
+        let currentPlayerId = null;
+        let isTeacher = false;
+        let hasAnsweredCurrent = false;
+
+        async function initAuth() {
+            try {
+                await signInAnonymously(auth);
+            } catch (err) {
+                console.error("Chyba přihlášení. Máš ve Firebase zapnuté Anonymous Auth?", err);
+                alert("Nepodařilo se připojit k databázi. Zkontroluj nastavení Firebase (Authentication).");
+            }
+        }
+
+        function showView(viewId) {
+            document.getElementById('view-menu').classList.add('hidden');
+            document.getElementById('view-teacher').classList.add('hidden');
+            document.getElementById('view-student').classList.add('hidden');
+            document.getElementById(viewId).classList.remove('hidden');
+            document.getElementById(viewId).classList.add('flex');
+        }
+
+        // ==========================================
+        // UČITEL
+        // ==========================================
+        async function setupTeacherView() {
+            isTeacher = true;
+            
+            // Generování náhodného 6místného PINu
+            currentRoomId = Math.floor(100000 + Math.random() * 900000).toString();
+            
+            document.getElementById('display-pin').innerText = currentRoomId;
+            document.getElementById('room-pin-display').innerText = currentRoomId;
+            
+            // Generování QR Kódu
+            const qrcodeContainer = document.getElementById("qrcode");
+            qrcodeContainer.innerHTML = ""; 
+            const currentUrl = window.location.href.split('?')[0]; 
+            const joinUrl = `${currentUrl}?pin=${currentRoomId}`;
+            
+            new QRCode(qrcodeContainer, {
+                text: joinUrl,
+                width: 200,
+                height: 200,
+                colorDark : "#004d40",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.L
+            });
+
+            showView('view-teacher');
+            document.getElementById('room-indicator').classList.remove('hidden');
+            
+            try {
+                const roomRef = doc(db, roomsPath, currentRoomId);
+                await setDoc(roomRef, {
+                    status: 'waiting',
+                    currentQuestionIndex: 0,
+                    teacherId: auth.currentUser.uid,
+                    timestamp: Date.now()
+                });
+
+                onSnapshot(roomRef, (snap) => {
+                    if (snap.exists()) renderTeacherUI(snap.data());
+                });
+
+                const playersCol = collection(db, playersPath);
+                onSnapshot(playersCol, (snap) => {
+                    const players = [];
+                    snap.forEach(docSnap => {
+                        const data = docSnap.data();
+                        if (data.roomId === currentRoomId) {
+                            players.push({ id: docSnap.id, ...data });
+                        }
+                    });
+                    players.sort((a, b) => b.score - a.score);
+                    renderLeaderboard(players);
+                });
+
+            } catch (err) { 
+                console.error("Chyba při zakládání místnosti.", err); 
+            }
+        }
+
+        function renderTeacherUI(data) {
+            const lobby = document.getElementById('teacher-lobby');
+            const game = document.getElementById('teacher-game');
+
+            if (data.status === 'waiting') {
+                lobby.classList.remove('hidden');
+                lobby.classList.add('flex');
+                game.classList.add('hidden');
+                game.classList.remove('flex');
+            } else if (data.status === 'playing') {
+                lobby.classList.add('hidden');
+                lobby.classList.remove('flex');
+                game.classList.remove('hidden');
+                game.classList.add('flex');
+                
+                document.getElementById('teacher-q-index').innerText = data.currentQuestionIndex + 1;
+                document.getElementById('teacher-q-total').innerText = quizData.length;
+                document.getElementById('teacher-question-text').innerText = quizData[data.currentQuestionIndex].question;
+                
+                const qImage = quizData[data.currentQuestionIndex].image;
+                const imgEl = document.getElementById('teacher-question-image');
+                if (qImage) {
+                    imgEl.src = qImage;
+                    imgEl.classList.remove('hidden');
+                } else {
+                    imgEl.classList.add('hidden');
+                }
+                
+                const nextBtn = document.getElementById('btn-next-question');
+                if (data.currentQuestionIndex === quizData.length - 1) {
+                    nextBtn.innerHTML = "UKONČIT KVÍZ &rarr;";
+                    nextBtn.classList.remove('bg-swiss-cyan');
+                    nextBtn.classList.add('bg-swiss-salmon');
+                } else {
+                    nextBtn.innerHTML = "DALŠÍ OTÁZKA &rarr;";
+                    nextBtn.classList.remove('bg-swiss-salmon');
+                    nextBtn.classList.add('bg-swiss-cyan');
+                }
+            } else if (data.status === 'finished') {
+                document.getElementById('teacher-question-text').innerText = "Kvíz ukončen! Podívejte se na výsledky dole.";
+                document.getElementById('teacher-question-image').classList.add('hidden');
+                document.getElementById('btn-next-question').classList.add('hidden');
+            }
+        }
+
+        function renderLeaderboard(players) {
+            const list = document.getElementById('leaderboard-list');
+            list.innerHTML = '';
+            if (players.length === 0) {
+                list.innerHTML = '<li class="text-xl col-span-2">Zatím nikdo nepřišel...</li>';
+                return;
+            }
+            players.forEach(p => {
+                const bgClass = p.answeredCurrent ? 'bg-swiss-cyan' : 'bg-gray-100';
+                list.innerHTML += `
+                    <li class="${bgClass} p-3 swiss-border font-bold flex justify-between items-center transition-colors">
+                        <span class="truncate pr-2">${p.name}</span>
+                        <span class="text-swiss-salmon text-2xl">${p.score}</span>
+                    </li>
+                `;
+            });
+        }
+
+        async function startQuiz() {
+            await updateDoc(doc(db, roomsPath, currentRoomId), {
+                status: 'playing',
+                currentQuestionIndex: 0
+            });
+        }
+
+        async function nextQuestion() {
+            const roomRef = doc(db, roomsPath, currentRoomId);
+            const snap = await getDoc(roomRef);
+            if (!snap.exists()) return;
+            const data = snap.data();
+
+            const pSnap = await getDocs(collection(db, playersPath));
+            const updatePromises = [];
+            pSnap.forEach(pDoc => {
+                if (pDoc.data().roomId === currentRoomId) {
+                    updatePromises.push(updateDoc(doc(db, playersPath, pDoc.id), { answeredCurrent: false }));
+                }
+            });
+            await Promise.all(updatePromises);
+
+            if (data.currentQuestionIndex + 1 < quizData.length) {
+                await updateDoc(roomRef, { currentQuestionIndex: data.currentQuestionIndex + 1 });
+            } else {
+                await updateDoc(roomRef, { status: 'finished' });
+            }
+        }
+
+        // ==========================================
+        // STUDENT
+        // ==========================================
+        async function joinRoom() {
+            const pinVal = document.getElementById('input-pin').value.trim();
+            const nameVal = document.getElementById('input-name').value.trim();
+            
+            if (!pinVal || !nameVal) {
+                alert("Zadej PIN i jméno!");
+                return;
+            }
+            
+            currentRoomId = pinVal;
+            currentPlayerId = crypto.randomUUID(); 
+            
+            try {
+                await setDoc(doc(db, playersPath, currentPlayerId), {
+                    roomId: currentRoomId,
+                    name: nameVal,
+                    score: 0,
+                    answeredCurrent: false
+                });
+
+                document.getElementById('student-login').classList.add('hidden');
+                document.getElementById('student-waiting').classList.remove('hidden');
+                document.getElementById('student-waiting').classList.add('flex');
+                document.getElementById('student-score-panel').classList.remove('hidden');
+                
+                onSnapshot(doc(db, roomsPath, currentRoomId), (snap) => {
+                    if(snap.exists()) handleStudentRoomState(snap.data());
+                });
+
+                onSnapshot(doc(db, playersPath, currentPlayerId), (snap) => {
+                    if(snap.exists()) document.getElementById('student-score-display').innerText = snap.data().score;
+                });
+            } catch (err) { 
+                console.error(err); 
+                alert("Nepodařilo se připojit k místnosti. Zkontroloval jsi PIN?");
+            }
+        }
+
+        function handleStudentRoomState(data) {
+            const waiting = document.getElementById('student-waiting');
+            const question = document.getElementById('student-question');
+
+            if (data.status === 'waiting') {
+                waiting.classList.remove('hidden');
+                waiting.classList.add('flex');
+                question.classList.add('hidden');
+                question.classList.remove('flex');
+                document.getElementById('student-waiting-msg').innerText = "Čekám na učitele...";
+            } else if (data.status === 'playing') {
+                hasAnsweredCurrent = false; 
+                waiting.classList.add('hidden');
+                waiting.classList.remove('flex');
+                question.classList.remove('hidden');
+                question.classList.add('flex');
+                renderStudentOptions(data.currentQuestionIndex);
+            } else if (data.status === 'finished') {
+                waiting.classList.remove('hidden');
+                waiting.classList.add('flex');
+                question.classList.add('hidden');
+                question.classList.remove('flex');
+                document.getElementById('student-waiting-msg').innerText = "Konec! Koukni na tabuli.";
+            }
+        }
+
+        function renderStudentOptions(qIndex) {
+            const qData = quizData[qIndex];
+            const container = document.getElementById('student-options');
+            container.innerHTML = '';
+            
+            if (qData.type === 'text-input') {
+                container.className = "flex flex-col gap-4 w-full";
+                
+                const input = document.createElement('input');
+                input.type = "text";
+                input.id = "student-text-answer";
+                input.className = "swiss-input text-3xl text-center py-6 mt-8";
+                input.placeholder = "Napiš odpověď...";
+                input.autocomplete = "off";
+                
+                const btn = document.createElement('button');
+                btn.className = "swiss-btn py-6 text-3xl font-black bg-swiss-cyan mt-4 uppercase";
+                btn.innerText = "Odeslat odpověď";
+                btn.addEventListener('click', () => {
+                    const val = document.getElementById('student-text-answer').value.toLowerCase().trim();
+                    const isCorrect = qData.acceptedAnswers.includes(val);
+                    studentSubmitAnswer(isCorrect);
+                });
+                
+                container.appendChild(input);
+                container.appendChild(btn);
+            } else {
+                container.className = "swiss-grid flex-grow";
+                const colors = ['bg-[#f4816e]', 'bg-[#00ffff]', 'bg-[#fbbf24]', 'bg-[#a3e635]'];
+                if (qData.type === 'true-false') {
+                    colors[0] = 'bg-[#00ffff]'; 
+                    colors[1] = 'bg-[#f4816e]'; 
+                }
+                qData.options.forEach((opt, index) => {
+                    const btn = document.createElement('button');
+                    btn.className = `swiss-btn py-12 text-2xl font-black ${colors[index % colors.length]}`;
+                    btn.innerText = opt; 
+                    btn.addEventListener('click', () => {
+                        studentSubmitAnswer(index === qData.correctIndex);
+                    });
+                    container.appendChild(btn);
+                });
+            }
+        }
+
+        async function studentSubmitAnswer(isCorrect) {
+            if (hasAnsweredCurrent) return;
+            hasAnsweredCurrent = true; 
+            
+            try {
+                const pSnap = await getDoc(doc(db, playersPath, currentPlayerId));
+                if (pSnap.exists()) {
+                    let newScore = pSnap.data().score;
+                    if (isCorrect) newScore += 1000;
+                    
+                    await updateDoc(doc(db, playersPath, currentPlayerId), {
+                        score: newScore,
+                        answeredCurrent: true
+                    });
+                }
+
+                document.getElementById('student-question').classList.add('hidden');
+                document.getElementById('student-question').classList.remove('flex');
+                const waiting = document.getElementById('student-waiting');
+                waiting.classList.remove('hidden');
+                waiting.classList.add('flex');
+                
+                const msg = document.getElementById('student-waiting-msg');
+                if (isCorrect) {
+                    msg.innerText = "SPRÁVNĚ! +1000";
+                    msg.className = "text-4xl font-black uppercase text-green-600";
+                } else {
+                    msg.innerText = "ŠPATNĚ!";
+                    msg.className = "text-4xl font-black uppercase text-red-600";
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        // ==========================================
+        // INICIALIZACE A LISTENERY
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initAuth();
+            
+            document.getElementById('btn-role-teacher').addEventListener('click', setupTeacherView);
+            
+            document.getElementById('btn-role-student').addEventListener('click', () => {
+                showView('view-student');
+            });
+            
+            document.getElementById('btn-start-quiz').addEventListener('click', startQuiz);
+            document.getElementById('btn-next-question').addEventListener('click', nextQuestion);
+            document.getElementById('btn-join-room').addEventListener('click', joinRoom);
+
+            // Automatické předvyplnění PINu pokud student přijde přes QR kód
+            const urlParams = new URLSearchParams(window.location.search);
+            const pinFromUrl = urlParams.get('pin');
+            if(pinFromUrl) {
+                document.getElementById('input-pin').value = pinFromUrl;
+                showView('view-student');
+            }
+        });
+    </script>
+</body>
+</html>
