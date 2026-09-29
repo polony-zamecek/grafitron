@@ -119,12 +119,10 @@
 
     <!-- FIREBASE & LOGIKA APLIKACE -->
     <script type="module">
-        // Import Firebase (verze 10.8.1)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
-        // Tvoje Firebase Konfigurace
         const firebaseConfig = {
             apiKey: "AIzaSyChRc14OD5Ca8KLxWMyRTy1zQnd3-j6O8w",
             authDomain: "grafitron-110b5.firebaseapp.com",
@@ -134,15 +132,12 @@
             appId: "1:593241952769:web:697e9a2059d96d33d72600"
         };
 
-        // Inicializace Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
         
-        // Tvoje Google Tabulka (Apps Script API)
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw3okFjuvMe7LXCnOeqkDh8yTrQIc6UizWpr8pTq-zNsvQDLyTU4YeRMB5eMW9VOpHQ/exec";
 
-        // Globální proměnné
         let currentRole = null;
         let roomPin = null;
         let studentId = null;
@@ -153,7 +148,6 @@
         let timeLimit = 15;
         let currentQuestionType = '';
         
-        // --- POMOCNÉ FUNKCE PRO ZOBRAZENÍ ---
         const views = {
             role: document.getElementById('view-role'),
             teacherSetup: document.getElementById('view-teacher-setup'),
@@ -167,7 +161,6 @@
             views[viewName].classList.remove('hidden');
         }
 
-        // Čtení PINu z URL (když student naskenuje QR kód)
         const urlParams = new URLSearchParams(window.location.search);
         if(urlParams.has('pin')) {
             document.getElementById('student-pin').value = urlParams.get('pin');
@@ -176,20 +169,18 @@
 
         // --- UČITEL: LOGIKA ---
         
-        // 1. Učitel klikne na hlavní tlačítko
         document.getElementById('btn-role-teacher').addEventListener('click', async () => {
             currentRole = 'teacher';
             showView('teacherSetup');
             
             try {
-                // Načteme seznam listů (testů) z Google Tabulky
                 const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getSheets`);
                 const json = await res.json();
                 
                 if(json.status === 'success') {
                     const select = document.getElementById('select-test');
                     select.innerHTML = json.data
-                        .filter(sheet => sheet !== 'Nastavení') // Ignorujeme případný list s nastavením
+                        .filter(sheet => sheet !== 'Nastavení')
                         .map(sheet => `<option value="${sheet}">${sheet}</option>`).join('');
                     
                     document.getElementById('teacher-loading').classList.add('hidden');
@@ -200,14 +191,12 @@
             }
         });
 
-        // 2. Učitel vybere test a zakládá místnost
         document.getElementById('btn-create-room').addEventListener('click', async () => {
             const sheetName = document.getElementById('select-test').value;
             const btn = document.getElementById('btn-create-room');
             btn.innerText = "NAČÍTÁM OTÁZKY Z GOOGLU...";
             
             try {
-                // Stáhneme konkrétní otázky z vybraného listu
                 const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getQuestions&sheetName=${encodeURIComponent(sheetName)}`);
                 const json = await res.json();
                 
@@ -222,12 +211,10 @@
             }
         });
 
-        // 3. Vytvoření místnosti ve Firestore a zobrazení Lobby
         async function setupRoom() {
-            roomPin = Math.floor(100000 + Math.random() * 900000).toString(); // 6místný PIN
+            roomPin = Math.floor(100000 + Math.random() * 900000).toString();
             document.getElementById('room-pin-display').innerText = roomPin;
             
-            // Generování QR kódu
             const qrUrl = window.location.origin + window.location.pathname + "?pin=" + roomPin;
             document.getElementById('qrcode').innerHTML = "";
             new QRCode(document.getElementById('qrcode'), {
@@ -237,7 +224,6 @@
                 correctLevel : QRCode.CorrectLevel.H
             });
 
-            // Zápis místnosti do databáze (status waiting)
             await setDoc(doc(db, "rooms", roomPin), {
                 state: "waiting",
                 questionIndex: 0,
@@ -246,14 +232,12 @@
 
             showView('teacher');
 
-            // Posloucháme změny nad místností (jestli někdo odpověděl atd.)
             onSnapshot(doc(db, "rooms", roomPin), (snapshot) => {
                 const data = snapshot.data();
                 if(data) updateTeacherDashboard(data);
             });
         }
 
-        // Aktualizace počtu připojených studentů
         function updateTeacherDashboard(roomData) {
             const studentsRef = collection(db, "rooms", roomPin, "students");
             onSnapshot(studentsRef, (snapshot) => {
@@ -268,7 +252,6 @@
                     if(!s.answeredCurrent && roomData.state === 'playing') allAnswered = false;
                     
                     const div = document.createElement('div');
-                    // Design kartičky studenta. Zezelená (cyan), pokud už poslal odpověď
                     div.className = `p-4 text-center font-bold text-2xl uppercase sharp border-4 ${s.answeredCurrent ? 'bg-cyan text-[#004d40] border-white' : 'bg-[#00332a] border-[#00ffff] text-white'}`;
                     div.innerHTML = `${s.name}<br><span class="text-lg font-normal text-[#f4816e]">${s.score || 0} bodů</span>`;
                     board.appendChild(div);
@@ -276,14 +259,12 @@
                 
                 document.getElementById('students-count').innerText = count;
                 
-                // Zobrazit tlačítko START jakmile je tu alespoň 1 student
                 if(roomData.state === 'waiting' && count > 0) {
                     document.getElementById('btn-start-quiz').classList.remove('hidden');
                 }
             });
         }
 
-        // 4. Učitel spouští první otázku
         document.getElementById('btn-start-quiz').addEventListener('click', async () => {
             document.getElementById('btn-start-quiz').classList.add('hidden');
             document.getElementById('btn-next-question').classList.remove('hidden');
@@ -292,13 +273,12 @@
             await updateDoc(doc(db, "rooms", roomPin), {
                 state: "playing",
                 questionIndex: 0,
-                forceReset: Math.random() // Donutí studenty resetovat UI
+                forceReset: Math.random()
             });
             
             showTeacherQuestion(0);
         });
 
-        // 5. Učitel posouvá na další otázku
         document.getElementById('btn-next-question').addEventListener('click', async () => {
             currentQuestionIndex++;
             
@@ -309,20 +289,17 @@
                 });
                 showTeacherQuestion(currentQuestionIndex);
             } else {
-                // Konec hry
                 await updateDoc(doc(db, "rooms", roomPin), { state: "finished" });
                 document.getElementById('teacher-question-view').innerHTML = `<h2 class="text-7xl font-black text-[#00ffff] uppercase mb-4">Konec testu!</h2><p class="text-3xl text-white">Podívej se na výsledky v žebříčku níže.</p>`;
                 document.getElementById('btn-next-question').classList.add('hidden');
             }
         });
 
-        // Vykreslení otázky na projektoru (podpora typů z tabulky)
         function showTeacherQuestion(index) {
             const q = quizData[index];
             document.getElementById('teacher-question-view').classList.remove('hidden');
             document.getElementById('teacher-question-text').innerText = q.text;
             
-            // Obrázek
             const imgEl = document.getElementById('teacher-question-image');
             if(q.image && q.image.trim() !== '') {
                 imgEl.src = q.image;
@@ -341,7 +318,6 @@
                 const colors = ['bg-[#f4816e]', 'bg-[#00ffff]', 'bg-white', 'bg-gray-400'];
                 const textColor = ['text-[#004d40]', 'text-[#004d40]', 'text-[#004d40]', 'text-black'];
                 
-                // Ošetření chyb v tabulce (kdyby nebyly 4 možnosti)
                 let opts = q.options || [];
                 if(opts.length === 0) opts = ["A", "B", "C", "D"];
 
@@ -363,10 +339,14 @@
             }
         }
 
-
         // --- STUDENT: LOGIKA ---
 
-        // 1. Přihlášení studenta
+        // PŘIDÁNA CHYBĚJÍCÍ FUNKCE PRO TLAČÍTKO STUDENT!
+        document.getElementById('btn-role-student').addEventListener('click', () => {
+            currentRole = 'student';
+            showView('studentLogin');
+        });
+
         document.getElementById('btn-join-room').addEventListener('click', async () => {
             const pin = document.getElementById('student-pin').value.trim();
             const name = document.getElementById('student-name').value.trim();
@@ -379,19 +359,16 @@
             err.innerText = "Připojuji k serveru...";
             
             try {
-                // Kontrola existence místnosti
                 const roomSnap = await getDoc(doc(db, "rooms", pin));
                 if(!roomSnap.exists()) {
                     err.innerText = "Místnost neexistuje!";
                     return;
                 }
                 
-                // Přihlášení (anonymně na pozadí Firebase)
                 await signInAnonymously(auth);
                 roomPin = pin;
                 studentId = "std_" + Math.floor(Math.random() * 9999999); 
                 
-                // Vytvoření profilu studenta v místnosti
                 await setDoc(doc(db, "rooms", roomPin, "students", studentId), {
                     name: name,
                     score: 0,
@@ -399,7 +376,7 @@
                 });
                 
                 showView('studentGame');
-                listenToRoom(); // Začneme poslouchat pokyny učitele
+                listenToRoom();
                 
             } catch (e) {
                 err.innerText = "Chyba připojení k databázi.";
@@ -409,7 +386,6 @@
 
         let lastReset = null;
 
-        // 2. Poslouchání stavu místnosti (hrajem/čekáme)
         function listenToRoom() {
             onSnapshot(doc(db, "rooms", roomPin), async (snapshot) => {
                 const data = snapshot.data();
@@ -423,17 +399,11 @@
                     document.getElementById('student-waiting').classList.add('hidden');
                     document.getElementById('student-playing').classList.remove('hidden');
                     
-                    // Zjistíme, jestli učitel nespustil novou otázku
                     if(data.forceReset !== lastReset) {
                         lastReset = data.forceReset;
                         
-                        // Odemkneme studentovi UI
                         await updateDoc(doc(db, "rooms", roomPin, "students", studentId), { answeredCurrent: false });
                         
-                        // Zde by si mobilní klient ideálně stáhl type z tabulky. 
-                        // Pro zjednodušení Kahoot stylu (kde student kouká na projektor) vykreslujeme 4 velká tlačítka.
-                        // (Abychom sem dostali přesný type z Google Sheetu bez komplikovaného serveru, 
-                        // předpokládáme standardní 4-tlačítkový mobilní ovladač, jako má Kahoot).
                         buildStudentUI();
                         startStudentTimer(15);
                     }
@@ -446,11 +416,10 @@
             });
         }
 
-        // Vykreslení mobilního ovladače (Kahoot styl - jen barevné plochy)
         function buildStudentUI() {
             const area = document.getElementById('student-input-area');
             area.innerHTML = '';
-            area.className = 'grid-4 w-full h-[50vh]'; // Zabere půlku mobilního displeje
+            area.className = 'grid-4 w-full h-[50vh]';
             
             const colors = ['bg-[#f4816e]', 'bg-[#00ffff]', 'bg-white', 'bg-gray-400'];
             const shapes = ['▲', '◆', '●', '■'];
@@ -464,7 +433,6 @@
             }
         }
 
-        // 3. Časomíra na mobilu
         function startStudentTimer(seconds) {
             clearInterval(timerInterval);
             const bar = document.getElementById('time-bar');
@@ -478,12 +446,11 @@
                 
                 if(timeLeft <= 0) {
                     clearInterval(timerInterval);
-                    submitAnswer(-1); // Vypršel čas
+                    submitAnswer(-1);
                 }
             }, 100);
         }
 
-        // 4. Odeslání odpovědi
         async function submitAnswer(answerVal) {
             clearInterval(timerInterval);
             const area = document.getElementById('student-input-area');
@@ -495,13 +462,10 @@
                  area.innerHTML = `<h2 class="text-4xl font-black uppercase text-[#00ffff]">Odesláno!</h2>`;
             }
             
-            // Zapsání do Firestore
             const sRef = doc(db, "rooms", roomPin, "students", studentId);
             const snap = await getDoc(sRef);
             if(snap.exists()) {
                 let currentScore = snap.data().score || 0;
-                // V reálné hře by se zde ověřilo, zda vybral správný index oproti správné odpovědi
-                // Zde přičítáme body za účast/rychlost jako simulaci.
                 if(answerVal !== -1) {
                     currentScore += Math.floor(timeLeft * 100);
                 }
