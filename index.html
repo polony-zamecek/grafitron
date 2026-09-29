@@ -69,6 +69,11 @@
             <button id="btn-role-teacher" class="btn bg-cyan sharp text-3xl md:text-5xl">Učitel</button>
             <button id="btn-role-student" class="btn bg-salmon sharp text-3xl md:text-5xl">Student</button>
         </div>
+        
+        <!-- DEV TLAČÍTKO -->
+        <button id="btn-dev-test" class="mt-12 text-xl font-bold border-b-4 border-[#004d40] text-[#004d40] hover:text-[#f4816e] hover:border-[#f4816e] transition-all cursor-pointer">
+            🛠 Rychlý vývojářský test (Automaticky vytvoří hru a bota)
+        </button>
     </div>
 
     <!-- 1.5 OBRAZOVKA: HESLO UČITELE -->
@@ -198,14 +203,66 @@
             views[viewName].classList.remove('hidden');
         }
 
+        // --- AUTOMATICKÉ PŘIPOJENÍ Z URL (pro QR kód i Dev bota) ---
         const urlParams = new URLSearchParams(window.location.search);
         if(urlParams.has('pin')) {
             document.getElementById('student-pin').value = urlParams.get('pin');
+            if(urlParams.has('name')) {
+                document.getElementById('student-name').value = urlParams.get('name');
+            }
             showView('studentLogin');
+
+            // Pokud URL obsahuje autojoin, robot se sám přihlásí
+            if(urlParams.get('autojoin') === '1') {
+                document.getElementById('student-error').innerText = "VÝVOJÁŘSKÝ BOT SE PŘIPOJUJE...";
+                setTimeout(() => {
+                    document.getElementById('btn-join-room').click();
+                }, 800); // 800ms pauza, aby se stihl načíst Firebase
+            }
         }
 
         document.getElementById('btn-back-to-role').addEventListener('click', () => showView('role'));
         document.getElementById('btn-back-to-role-student').addEventListener('click', () => showView('role'));
+
+        // --- DEV REŽIM (Rychlý test) ---
+        document.getElementById('btn-dev-test').addEventListener('click', async () => {
+            // Okamžitě otevřeme popup okno (prohlížeče to nezablokují, protože to vychází z kliku)
+            const simWindow = window.open("", "StudentSimulator", "width=400,height=800,left=50,top=50");
+            simWindow.document.write("<body style='background:#004d40; color:#00ffff; font-family:sans-serif; text-align:center; padding-top:50px;'><h1>Otevírám mobil DevBota...</h1></body>");
+
+            currentRole = 'teacher';
+            showView('teacherSetup');
+            document.getElementById('teacher-loading').innerText = "VÝVOJÁŘSKÝ REŽIM: Hledám první test...";
+            document.getElementById('teacher-setup-form').classList.add('hidden');
+
+            try {
+                // 1. Zjistit listy
+                const resS = await fetch(`${GOOGLE_SCRIPT_URL}?action=getSheets`);
+                const jsonS = await resS.json();
+                const firstSheet = jsonS.data.filter(s => s !== 'Nastavení')[0];
+
+                // 2. Stáhnout první test
+                document.getElementById('teacher-loading').innerText = `VÝVOJÁŘSKÝ REŽIM: Stahuji test "${firstSheet}"...`;
+                const resQ = await fetch(`${GOOGLE_SCRIPT_URL}?action=getQuestions&sheetName=${encodeURIComponent(firstSheet)}`);
+                const jsonQ = await resQ.json();
+
+                if(jsonQ.status === 'success' && jsonQ.data.length > 0) {
+                    quizData = jsonQ.data;
+                    await setupRoom(); // Založí místnost (změní roomPin)
+
+                    // 3. Přesměrovat okno robota na herní URL
+                    const studentUrl = window.location.origin + window.location.pathname + `?pin=${roomPin}&name=DevBot&autojoin=1`;
+                    simWindow.location.href = studentUrl;
+                } else {
+                    document.getElementById('teacher-loading').innerText = "CHYBA: Tabulka je prázdná.";
+                    simWindow.close();
+                }
+            } catch (e) {
+                document.getElementById('teacher-loading').innerText = "CHYBA SPOJENÍ!";
+                simWindow.close();
+            }
+        });
+
 
         // --- UČITEL ---
         
@@ -300,7 +357,6 @@
             const q = quizData[index];
             const type = q.type ? q.type.trim() : 'multiple-choice';
             
-            // POSÍLÁME DO FIREBASE I TEXT OTÁZKY A MOŽNOSTI PRO MOBILY
             await updateDoc(doc(db, "rooms", roomPin), {
                 state: "playing",
                 questionIndex: index,
@@ -458,7 +514,6 @@
                         lastReset = data.forceReset;
                         await updateDoc(doc(db, "rooms", roomPin, "students", studentId), { answeredCurrent: false });
                         
-                        // VOLÁME VYKRESLENÍ UI A PŘEDÁVÁME TEXTY
                         buildStudentUI(data.questionType || 'multiple-choice', data.questionText, data.questionOptions);
                         startStudentTimer(15);
                     }
@@ -470,12 +525,10 @@
             });
         }
 
-        // UPRAVENÁ FUNKCE PRO VYKRESLENÍ TEXTU A ODPOVĚDÍ NA MOBILU
         function buildStudentUI(type, qText, qOptions) {
             const area = document.getElementById('student-input-area');
             area.innerHTML = '';
             
-            // Vygenerování bloku se zněním otázky
             let questionHtml = '';
             if (qText) {
                 questionHtml = `
@@ -497,7 +550,6 @@
                 
                 for(let i=0; i<4; i++) {
                     const btn = document.createElement('button');
-                    // Tlačítka jsou teď flex řádky se zarovnáním doleva, aby text mohl natékat
                     btn.className = `btn sharp text-xl md:text-3xl p-4 md:p-6 ${colors[i%4]} text-[#004d40] font-black flex flex-row items-center justify-start text-left`;
                     const optText = opts[i] || labels[i];
                     btn.innerHTML = `<span class="mr-4 text-3xl font-black bg-[#004d40] text-white px-4 py-2 border-4 border-[#004d40] shrink-0">${labels[i]}</span> <span>${optText}</span>`;
