@@ -64,7 +64,7 @@
         <div class="flex justify-between items-center mb-8 bg-[#00332a] p-6 border-2 border-[#00ffff]">
             <h3 class="text-3xl font-bold uppercase text-white"><span id="students-count" class="text-[#00ffff] text-5xl">0</span> Studentů v místnosti</h3>
             <button id="btn-start-quiz" class="btn bg-salmon sharp px-12 py-6 text-3xl hidden hover:bg-white">Spustit kvíz</button>
-            <button id="btn-next-question" class="btn bg-cyan sharp px-12 py-6 text-3xl hidden animate-pulse hover:bg-white">Další otázka ➔</button>
+            <button id="btn-next-question" class="btn bg-cyan sharp px-12 py-6 text-3xl hidden hover:bg-white">Další otázka ➔</button>
         </div>
 
         <div id="teacher-question-view" class="hidden mb-12 text-center bg-[#00332a] p-8 border-4 border-[#f4816e]">
@@ -107,7 +107,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        // Přidán import getDocs pro jednorázové načtení studentů při vyhodnocování
+        import { getFirestore, doc, setDoc, getDoc, getDocs, onSnapshot, collection, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -218,7 +219,7 @@
             await updateDoc(doc(db, "rooms", roomPin), {
                 state: "playing",
                 questionIndex: index,
-                questionType: type, // Nyní posíláme typ otázky studentům!
+                questionType: type,
                 forceReset: Math.random()
             });
             showTeacherQuestion(index, type);
@@ -230,8 +231,62 @@
             triggerQuestion(0);
         });
 
+        // --- NOVÁ FUNKCE: Vyhodnocení odpovědí ---
+        async function evaluateCurrentQuestion(index, type) {
+            const q = quizData[index];
+            const correctVal = q.correctAnswer ? q.correctAnswer.toString().toLowerCase().trim() : '';
+            const accepted = q.acceptedAnswers ? q.acceptedAnswers.map(a => a.toLowerCase().trim()) : [correctVal];
+
+            // Pomocná mapa pro multiple-choice (převod A,B,C,D na text odpovědi)
+            let opts = q.options || ["A", "B", "C", "D"];
+            const labels = ['A', 'B', 'C', 'D'];
+            let labelToText = {};
+            opts.forEach((opt, i) => { labelToText[labels[i]] = opt.toString().toLowerCase().trim(); });
+
+            // Načteme všechny studenty v místnosti
+            const studentsRef = collection(db, "rooms", roomPin, "students");
+            const snapshot = await getDocs(studentsRef);
+
+            // Projdeme studenty a přidělíme body
+            snapshot.forEach(async (docSnap) => {
+                const s = docSnap.data();
+                if (s.answeredCurrent && s.lastAnswer) {
+                    let isCorrect = false;
+                    let sAnswer = s.lastAnswer.toString().toLowerCase().trim();
+
+                    if (type === 'multiple-choice') {
+                        // Přeložíme písmeno (A) na text odpovědi a porovnáme
+                        let textAnswer = labelToText[s.lastAnswer.toUpperCase()];
+                        if (textAnswer === correctVal) isCorrect = true;
+                    } else if (type === 'true-false') {
+                        if (sAnswer === correctVal) isCorrect = true;
+                    } else if (type === 'text-input') {
+                        if (accepted.includes(sAnswer)) isCorrect = true;
+                    }
+
+                    if (isCorrect) {
+                        let timeR = s.timeRemaining || 0;
+                        // Základ 500 bodů + bonus za čas (max dalších 500)
+                        let points = 500 + Math.floor((timeR / 15) * 500);
+                        await updateDoc(docSnap.ref, { score: (s.score || 0) + points });
+                    }
+                }
+            });
+        }
+
+        // Tlačítko Další otázka nyní nejprve vyhodnotí body a pak posune hru dál
         document.getElementById('btn-next-question').addEventListener('click', async () => {
+            const btn = document.getElementById('btn-next-question');
+            btn.innerText = "Vyhodnocuji...";
+            btn.disabled = true;
+
+            const currentType = quizData[currentQuestionIndex].type ? quizData[currentQuestionIndex].type.trim() : 'multiple-choice';
+            await evaluateCurrentQuestion(currentQuestionIndex, currentType);
+
             currentQuestionIndex++;
+            btn.innerText = "Další otázka ➔";
+            btn.disabled = false;
+
             if(currentQuestionIndex < quizData.length) {
                 triggerQuestion(currentQuestionIndex);
             } else {
@@ -321,8 +376,6 @@
                     if(data.forceReset !== lastReset) {
                         lastReset = data.forceReset;
                         await updateDoc(doc(db, "rooms", roomPin, "students", studentId), { answeredCurrent: false });
-                        
-                        // Zde mobil čte typ otázky z databáze a vykresluje odpovídající UI
                         buildStudentUI(data.questionType || 'multiple-choice');
                         startStudentTimer(15);
                     }
@@ -382,6 +435,7 @@
             }, 100);
         }
 
+        // Student už si žádné skóre nepočítá, jen odešle svou volbu a čas.
         async function submitAnswer(answerVal) {
             clearInterval(timerInterval);
             const area = document.getElementById('student-input-area');
@@ -391,12 +445,11 @@
                 : `<h2 class="text-4xl font-black uppercase text-[#00ffff]">Odesláno!</h2>`;
             
             const sRef = doc(db, "rooms", roomPin, "students", studentId);
-            const snap = await getDoc(sRef);
-            if(snap.exists()) {
-                let currentScore = snap.data().score || 0;
-                if(answerVal !== -1) currentScore += Math.floor(timeLeft * 100);
-                await updateDoc(sRef, { answeredCurrent: true, score: currentScore, lastAnswer: answerVal });
-            }
+            await updateDoc(sRef, { 
+                answeredCurrent: true, 
+                lastAnswer: answerVal === -1 ? null : answerVal,
+                timeRemaining: timeLeft
+            });
         }
     </script>
 </body>
