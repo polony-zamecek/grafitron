@@ -51,7 +51,6 @@
 
     <!-- 3. OBRAZOVKA: UČITEL - LOBBY A HRA -->
     <div id="view-teacher" class="hidden flex-1 flex-col w-full max-w-7xl mx-auto">
-        <!-- Hlavička s PINem a QR -->
         <div class="flex justify-between items-center mb-8 border-b-4 border-[#00ffff] pb-6">
             <div>
                 <h2 class="text-2xl font-bold uppercase text-[#f4816e] tracking-widest mb-2">Připoj se na mobilu! PIN:</h2>
@@ -62,28 +61,20 @@
             </div>
         </div>
 
-        <!-- Ovládací panel -->
         <div class="flex justify-between items-center mb-8 bg-[#00332a] p-6 border-2 border-[#00ffff]">
             <h3 class="text-3xl font-bold uppercase text-white"><span id="students-count" class="text-[#00ffff] text-5xl">0</span> Studentů v místnosti</h3>
             <button id="btn-start-quiz" class="btn bg-salmon sharp px-12 py-6 text-3xl hidden hover:bg-white">Spustit kvíz</button>
             <button id="btn-next-question" class="btn bg-cyan sharp px-12 py-6 text-3xl hidden animate-pulse hover:bg-white">Další otázka ➔</button>
         </div>
 
-        <!-- Zobrazení otázky na projektoru -->
         <div id="teacher-question-view" class="hidden mb-12 text-center bg-[#00332a] p-8 border-4 border-[#f4816e]">
             <h2 id="teacher-question-text" class="text-5xl font-black mb-8 text-white leading-tight"></h2>
             <img id="teacher-question-image" src="" alt="Obrázek k otázce" class="max-h-80 mx-auto mb-8 hidden border-4 border-white object-contain">
-            
-            <div id="teacher-options" class="w-full">
-                <!-- Odpovědi se vygenerují zde -->
-            </div>
+            <div id="teacher-options" class="w-full"></div>
         </div>
 
-        <!-- Žebříček připojených (Lobby) -->
         <h3 id="leaderboard-title" class="text-2xl font-bold uppercase text-[#00ffff] mb-4">Živý žebříček:</h3>
-        <div id="leaderboard" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-            <!-- Studenti se načtou sem -->
-        </div>
+        <div id="leaderboard" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4"></div>
     </div>
 
     <!-- 4. OBRAZOVKA: STUDENT - PŘIHLÁŠENÍ -->
@@ -95,29 +86,25 @@
         <div id="student-error" class="text-[#f4816e] font-bold text-xl text-center h-8"></div>
     </div>
 
-    <!-- 5. OBRAZOVKA: STUDENT - HRA (Ovladač) -->
+    <!-- 5. OBRAZOVKA: STUDENT - HRA -->
     <div id="view-student-game" class="hidden flex-1 flex-col w-full max-w-md mx-auto h-screen justify-center">
-        <!-- Čekání -->
         <div id="student-waiting" class="text-center">
             <h2 class="text-5xl font-black text-[#00ffff] mb-6 uppercase animate-pulse">Čekáme!</h2>
             <p class="text-2xl font-bold">Koukej na projektor.</p>
         </div>
 
-        <!-- Hra -->
         <div id="student-playing" class="hidden h-full flex flex-col justify-center">
-            <!-- Časomíra -->
             <div class="mb-8 w-full bg-[#00332a] border-4 border-[#00ffff] h-12 sharp relative">
                 <div id="time-bar" class="bg-[#00ffff] h-full transition-all ease-linear" style="width: 100%;"></div>
             </div>
             
-            <h2 id="student-info" class="text-2xl font-bold uppercase text-center text-white mb-4">Vyber barvu:</h2>
+            <h2 id="student-info" class="text-2xl font-bold uppercase text-center text-white mb-4">Vyber odpověď:</h2>
             <div id="student-input-area" class="flex-1 w-full pb-8">
-                <!-- Tlačítka (Kahoot styl - jen barvy) se vygenerují zde -->
+                <!-- Tlačítka se vygenerují dynamicky -->
             </div>
         </div>
     </div>
 
-    <!-- FIREBASE & LOGIKA APLIKACE -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
@@ -135,18 +122,11 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
-        
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw3okFjuvMe7LXCnOeqkDh8yTrQIc6UizWpr8pTq-zNsvQDLyTU4YeRMB5eMW9VOpHQ/exec";
 
-        let currentRole = null;
-        let roomPin = null;
-        let studentId = null;
-        let quizData = [];
-        let currentQuestionIndex = 0;
-        let timerInterval;
-        let timeLeft = 15;
-        let timeLimit = 15;
-        let currentQuestionType = '';
+        let currentRole = null, roomPin = null, studentId = null;
+        let quizData = [], currentQuestionIndex = 0;
+        let timerInterval, timeLeft = 15, timeLimit = 15;
         
         const views = {
             role: document.getElementById('view-role'),
@@ -167,22 +147,16 @@
             showView('studentLogin');
         }
 
-        // --- UČITEL: LOGIKA ---
-        
+        // --- UČITEL ---
         document.getElementById('btn-role-teacher').addEventListener('click', async () => {
             currentRole = 'teacher';
             showView('teacherSetup');
-            
             try {
                 const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getSheets`);
                 const json = await res.json();
-                
                 if(json.status === 'success') {
                     const select = document.getElementById('select-test');
-                    select.innerHTML = json.data
-                        .filter(sheet => sheet !== 'Nastavení')
-                        .map(sheet => `<option value="${sheet}">${sheet}</option>`).join('');
-                    
+                    select.innerHTML = json.data.filter(s => s !== 'Nastavení').map(s => `<option value="${s}">${s}</option>`).join('');
                     document.getElementById('teacher-loading').classList.add('hidden');
                     document.getElementById('teacher-setup-form').classList.remove('hidden');
                 }
@@ -192,139 +166,104 @@
         });
 
         document.getElementById('btn-create-room').addEventListener('click', async () => {
-            const sheetName = document.getElementById('select-test').value;
             const btn = document.getElementById('btn-create-room');
-            btn.innerText = "NAČÍTÁM OTÁZKY Z GOOGLU...";
-            
+            btn.innerText = "NAČÍTÁM...";
             try {
-                const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getQuestions&sheetName=${encodeURIComponent(sheetName)}`);
+                const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getQuestions&sheetName=${encodeURIComponent(document.getElementById('select-test').value)}`);
                 const json = await res.json();
-                
                 if(json.status === 'success' && json.data.length > 0) {
                     quizData = json.data;
                     setupRoom();
-                } else {
-                    btn.innerText = "CHYBA: TEST JE PRÁZDNÝ";
-                }
-            } catch (e) {
-                btn.innerText = "CHYBA SPOJENÍ S GOOGLE SERVEREM";
-            }
+                } else btn.innerText = "CHYBA: TEST JE PRÁZDNÝ";
+            } catch (e) { btn.innerText = "CHYBA SPOJENÍ"; }
         });
 
         async function setupRoom() {
             roomPin = Math.floor(100000 + Math.random() * 900000).toString();
             document.getElementById('room-pin-display').innerText = roomPin;
             
-            const qrUrl = window.location.origin + window.location.pathname + "?pin=" + roomPin;
-            document.getElementById('qrcode').innerHTML = "";
             new QRCode(document.getElementById('qrcode'), {
-                text: qrUrl,
-                width: 140, height: 140,
-                colorDark : "#004d40", colorLight : "#ffffff",
-                correctLevel : QRCode.CorrectLevel.H
+                text: window.location.origin + window.location.pathname + "?pin=" + roomPin,
+                width: 140, height: 140, colorDark : "#004d40", colorLight : "#ffffff"
             });
 
-            await setDoc(doc(db, "rooms", roomPin), {
-                state: "waiting",
-                questionIndex: 0,
-                createdAt: new Date()
-            });
-
+            await setDoc(doc(db, "rooms", roomPin), { state: "waiting", questionIndex: 0, createdAt: new Date() });
             showView('teacher');
-
-            onSnapshot(doc(db, "rooms", roomPin), (snapshot) => {
-                const data = snapshot.data();
-                if(data) updateTeacherDashboard(data);
-            });
+            onSnapshot(doc(db, "rooms", roomPin), snap => { if(snap.data()) updateTeacherDashboard(snap.data()); });
         }
 
         function updateTeacherDashboard(roomData) {
-            const studentsRef = collection(db, "rooms", roomPin, "students");
-            onSnapshot(studentsRef, (snapshot) => {
+            onSnapshot(collection(db, "rooms", roomPin, "students"), snapshot => {
                 const board = document.getElementById('leaderboard');
                 board.innerHTML = "";
                 let count = 0;
-                let allAnswered = true;
                 
-                snapshot.forEach((docSnap) => {
+                snapshot.forEach(docSnap => {
                     const s = docSnap.data();
                     count++;
-                    if(!s.answeredCurrent && roomData.state === 'playing') allAnswered = false;
-                    
                     const div = document.createElement('div');
                     div.className = `p-4 text-center font-bold text-2xl uppercase sharp border-4 ${s.answeredCurrent ? 'bg-cyan text-[#004d40] border-white' : 'bg-[#00332a] border-[#00ffff] text-white'}`;
                     div.innerHTML = `${s.name}<br><span class="text-lg font-normal text-[#f4816e]">${s.score || 0} bodů</span>`;
                     board.appendChild(div);
                 });
-                
                 document.getElementById('students-count').innerText = count;
-                
-                if(roomData.state === 'waiting' && count > 0) {
-                    document.getElementById('btn-start-quiz').classList.remove('hidden');
-                }
+                if(roomData.state === 'waiting' && count > 0) document.getElementById('btn-start-quiz').classList.remove('hidden');
             });
         }
 
-        document.getElementById('btn-start-quiz').addEventListener('click', async () => {
-            document.getElementById('btn-start-quiz').classList.add('hidden');
-            document.getElementById('btn-next-question').classList.remove('hidden');
-            document.getElementById('leaderboard-title').innerText = "Stav odpovědí:";
+        async function triggerQuestion(index) {
+            const q = quizData[index];
+            const type = q.type ? q.type.trim() : 'multiple-choice';
             
             await updateDoc(doc(db, "rooms", roomPin), {
                 state: "playing",
-                questionIndex: 0,
+                questionIndex: index,
+                questionType: type, // Nyní posíláme typ otázky studentům!
                 forceReset: Math.random()
             });
-            
-            showTeacherQuestion(0);
+            showTeacherQuestion(index, type);
+        }
+
+        document.getElementById('btn-start-quiz').addEventListener('click', () => {
+            document.getElementById('btn-start-quiz').classList.add('hidden');
+            document.getElementById('btn-next-question').classList.remove('hidden');
+            triggerQuestion(0);
         });
 
         document.getElementById('btn-next-question').addEventListener('click', async () => {
             currentQuestionIndex++;
-            
             if(currentQuestionIndex < quizData.length) {
-                await updateDoc(doc(db, "rooms", roomPin), {
-                    questionIndex: currentQuestionIndex,
-                    forceReset: Math.random()
-                });
-                showTeacherQuestion(currentQuestionIndex);
+                triggerQuestion(currentQuestionIndex);
             } else {
                 await updateDoc(doc(db, "rooms", roomPin), { state: "finished" });
-                document.getElementById('teacher-question-view').innerHTML = `<h2 class="text-7xl font-black text-[#00ffff] uppercase mb-4">Konec testu!</h2><p class="text-3xl text-white">Podívej se na výsledky v žebříčku níže.</p>`;
+                document.getElementById('teacher-question-view').innerHTML = `<h2 class="text-7xl font-black text-[#00ffff] uppercase mb-4">Konec testu!</h2>`;
                 document.getElementById('btn-next-question').classList.add('hidden');
             }
         });
 
-        function showTeacherQuestion(index) {
+        function showTeacherQuestion(index, type) {
             const q = quizData[index];
             document.getElementById('teacher-question-view').classList.remove('hidden');
             document.getElementById('teacher-question-text').innerText = q.text;
             
             const imgEl = document.getElementById('teacher-question-image');
-            if(q.image && q.image.trim() !== '') {
-                imgEl.src = q.image;
-                imgEl.classList.remove('hidden');
-            } else {
-                imgEl.classList.add('hidden');
-            }
+            if(q.image) { imgEl.src = q.image; imgEl.classList.remove('hidden'); } 
+            else imgEl.classList.add('hidden');
 
             const optContainer = document.getElementById('teacher-options');
             optContainer.innerHTML = '';
-            
-            const type = q.type ? q.type.trim() : 'multiple-choice';
 
             if(type === 'multiple-choice') {
                 optContainer.className = 'grid-4 w-full h-48';
                 const colors = ['bg-[#f4816e]', 'bg-[#00ffff]', 'bg-white', 'bg-gray-400'];
                 const textColor = ['text-[#004d40]', 'text-[#004d40]', 'text-[#004d40]', 'text-black'];
-                
-                let opts = q.options || [];
-                if(opts.length === 0) opts = ["A", "B", "C", "D"];
+                const labels = ['A', 'B', 'C', 'D'];
+                let opts = q.options || ["A", "B", "C", "D"];
 
                 opts.forEach((opt, i) => {
                     const d = document.createElement('div');
                     d.className = `sharp text-3xl p-6 ${colors[i % 4]} ${textColor[i % 4]} font-bold flex items-center justify-center uppercase`;
-                    d.innerText = opt;
+                    d.innerHTML = `<span class="mr-4 text-5xl font-black opacity-50">${labels[i%4]}</span> ${opt}`;
                     optContainer.appendChild(d);
                 });
             } else if (type === 'true-false') {
@@ -335,13 +274,11 @@
                  `;
             } else if (type === 'text-input') {
                  optContainer.className = 'w-full h-32 flex items-center justify-center';
-                 optContainer.innerHTML = `<div class="text-4xl text-[#00ffff] font-bold uppercase animate-pulse">Čekám na textové odpovědi ze zařízení...</div>`;
+                 optContainer.innerHTML = `<div class="text-4xl text-[#00ffff] font-bold uppercase animate-pulse">Čekám na textové odpovědi...</div>`;
             }
         }
 
-        // --- STUDENT: LOGIKA ---
-
-        // PŘIDÁNA CHYBĚJÍCÍ FUNKCE PRO TLAČÍTKO STUDENT!
+        // --- STUDENT ---
         document.getElementById('btn-role-student').addEventListener('click', () => {
             currentRole = 'student';
             showView('studentLogin');
@@ -351,103 +288,97 @@
             const pin = document.getElementById('student-pin').value.trim();
             const name = document.getElementById('student-name').value.trim();
             const err = document.getElementById('student-error');
-            
-            if(!pin || !name) {
-                err.innerText = "Musíš zadat PIN i Jméno!";
-                return;
-            }
-            err.innerText = "Připojuji k serveru...";
+            if(!pin || !name) return err.innerText = "Zadej PIN i Jméno!";
             
             try {
                 const roomSnap = await getDoc(doc(db, "rooms", pin));
-                if(!roomSnap.exists()) {
-                    err.innerText = "Místnost neexistuje!";
-                    return;
-                }
+                if(!roomSnap.exists()) return err.innerText = "Místnost neexistuje!";
                 
                 await signInAnonymously(auth);
                 roomPin = pin;
                 studentId = "std_" + Math.floor(Math.random() * 9999999); 
                 
-                await setDoc(doc(db, "rooms", roomPin, "students", studentId), {
-                    name: name,
-                    score: 0,
-                    answeredCurrent: false
-                });
-                
+                await setDoc(doc(db, "rooms", roomPin, "students", studentId), { name, score: 0, answeredCurrent: false });
                 showView('studentGame');
                 listenToRoom();
-                
-            } catch (e) {
-                err.innerText = "Chyba připojení k databázi.";
-                console.error(e);
-            }
+            } catch (e) { err.innerText = "Chyba připojení."; }
         });
 
         let lastReset = null;
 
         function listenToRoom() {
-            onSnapshot(doc(db, "rooms", roomPin), async (snapshot) => {
-                const data = snapshot.data();
+            onSnapshot(doc(db, "rooms", roomPin), async snap => {
+                const data = snap.data();
                 if(!data) return;
 
                 if(data.state === 'waiting') {
                     document.getElementById('student-waiting').classList.remove('hidden');
                     document.getElementById('student-playing').classList.add('hidden');
-                } 
-                else if(data.state === 'playing') {
+                } else if(data.state === 'playing') {
                     document.getElementById('student-waiting').classList.add('hidden');
                     document.getElementById('student-playing').classList.remove('hidden');
                     
                     if(data.forceReset !== lastReset) {
                         lastReset = data.forceReset;
-                        
                         await updateDoc(doc(db, "rooms", roomPin, "students", studentId), { answeredCurrent: false });
                         
-                        buildStudentUI();
+                        // Zde mobil čte typ otázky z databáze a vykresluje odpovídající UI
+                        buildStudentUI(data.questionType || 'multiple-choice');
                         startStudentTimer(15);
                     }
-                }
-                else if (data.state === 'finished') {
+                } else if (data.state === 'finished') {
                     document.getElementById('student-waiting').classList.remove('hidden');
                     document.getElementById('student-playing').classList.add('hidden');
-                    document.getElementById('student-waiting').innerHTML = `<h2 class="text-6xl font-black text-[#00ffff] uppercase mb-4">Hotovo!</h2><p class="text-3xl font-bold">Koukej na výsledky.</p>`;
+                    document.getElementById('student-waiting').innerHTML = `<h2 class="text-6xl font-black text-[#00ffff] uppercase mb-4">Hotovo!</h2>`;
                 }
             });
         }
 
-        function buildStudentUI() {
+        function buildStudentUI(type) {
             const area = document.getElementById('student-input-area');
             area.innerHTML = '';
-            area.className = 'grid-4 w-full h-[50vh]';
             
-            const colors = ['bg-[#f4816e]', 'bg-[#00ffff]', 'bg-white', 'bg-gray-400'];
-            const shapes = ['▲', '◆', '●', '■'];
-            
-            for(let i=0; i<4; i++) {
-                const btn = document.createElement('button');
-                btn.className = `btn sharp text-6xl p-8 ${colors[i]} text-black`;
-                btn.innerText = shapes[i];
-                btn.onclick = () => submitAnswer(i);
-                area.appendChild(btn);
+            if(type === 'multiple-choice') {
+                area.className = 'grid-4 w-full h-[50vh]';
+                const colors = ['bg-[#f4816e]', 'bg-[#00ffff]', 'bg-white', 'bg-gray-400'];
+                const labels = ['A', 'B', 'C', 'D'];
+                for(let i=0; i<4; i++) {
+                    const btn = document.createElement('button');
+                    btn.className = `btn sharp text-7xl p-8 ${colors[i]} text-[#004d40] font-black`;
+                    btn.innerText = labels[i];
+                    btn.onclick = () => submitAnswer(labels[i]);
+                    area.appendChild(btn);
+                }
+            } else if (type === 'true-false') {
+                area.className = 'grid-2 w-full h-[50vh]';
+                area.innerHTML = `
+                    <button id="btn-true" class="btn sharp text-3xl md:text-5xl p-8 bg-[#00ffff] text-[#004d40] font-black">PRAVDA</button>
+                    <button id="btn-false" class="btn sharp text-3xl md:text-5xl p-8 bg-[#f4816e] text-[#004d40] font-black">NEPRAVDA</button>
+                `;
+                document.getElementById('btn-true').onclick = () => submitAnswer('pravda');
+                document.getElementById('btn-false').onclick = () => submitAnswer('nepravda');
+            } else if (type === 'text-input') {
+                area.className = 'flex flex-col space-y-6 w-full justify-center h-[50vh]';
+                area.innerHTML = `
+                    <input type="text" id="text-answer" placeholder="NAPIŠ ODPOVĚĎ..." class="w-full p-8 text-3xl md:text-4xl sharp text-center text-[#004d40] border-4 border-[#00ffff] font-black uppercase outline-none bg-white">
+                    <button id="btn-submit-text" class="btn bg-salmon sharp w-full p-8 text-4xl hover:bg-white hover:text-[#f4816e]">ODESLAT</button>
+                `;
+                document.getElementById('btn-submit-text').onclick = () => {
+                    const val = document.getElementById('text-answer').value.trim();
+                    if(val) submitAnswer(val);
+                };
             }
         }
 
         function startStudentTimer(seconds) {
             clearInterval(timerInterval);
             const bar = document.getElementById('time-bar');
-            timeLimit = seconds;
-            timeLeft = seconds;
+            timeLimit = seconds; timeLeft = seconds;
             
             timerInterval = setInterval(() => {
                 timeLeft -= 0.1;
-                const pct = Math.max(0, (timeLeft / timeLimit) * 100);
-                bar.style.width = pct + '%';
-                
-                if(timeLeft <= 0) {
-                    clearInterval(timerInterval);
-                    submitAnswer(-1);
-                }
+                bar.style.width = Math.max(0, (timeLeft / timeLimit) * 100) + '%';
+                if(timeLeft <= 0) { clearInterval(timerInterval); submitAnswer(-1); }
             }, 100);
         }
 
@@ -455,25 +386,16 @@
             clearInterval(timerInterval);
             const area = document.getElementById('student-input-area');
             area.className = 'flex items-center justify-center h-[50vh]';
-            
-            if(answerVal === -1) {
-                 area.innerHTML = `<h2 class="text-4xl font-black uppercase text-[#f4816e]">Čas vypršel!</h2>`;
-            } else {
-                 area.innerHTML = `<h2 class="text-4xl font-black uppercase text-[#00ffff]">Odesláno!</h2>`;
-            }
+            area.innerHTML = answerVal === -1 
+                ? `<h2 class="text-4xl font-black uppercase text-[#f4816e]">Čas vypršel!</h2>` 
+                : `<h2 class="text-4xl font-black uppercase text-[#00ffff]">Odesláno!</h2>`;
             
             const sRef = doc(db, "rooms", roomPin, "students", studentId);
             const snap = await getDoc(sRef);
             if(snap.exists()) {
                 let currentScore = snap.data().score || 0;
-                if(answerVal !== -1) {
-                    currentScore += Math.floor(timeLeft * 100);
-                }
-                
-                await updateDoc(sRef, { 
-                    answeredCurrent: true,
-                    score: currentScore
-                });
+                if(answerVal !== -1) currentScore += Math.floor(timeLeft * 100);
+                await updateDoc(sRef, { answeredCurrent: true, score: currentScore, lastAnswer: answerVal });
             }
         }
     </script>
