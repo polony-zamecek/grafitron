@@ -64,13 +64,19 @@
         <div class="flex justify-between items-center mb-8 bg-[#00332a] p-6 border-2 border-[#00ffff]">
             <h3 class="text-3xl font-bold uppercase text-white"><span id="students-count" class="text-[#00ffff] text-5xl">0</span> Studentů v místnosti</h3>
             <button id="btn-start-quiz" class="btn bg-salmon sharp px-12 py-6 text-3xl hidden hover:bg-white">Spustit kvíz</button>
-            <button id="btn-next-question" class="btn bg-cyan sharp px-12 py-6 text-3xl hidden hover:bg-white">Další otázka ➔</button>
+            <button id="btn-next-question" class="btn bg-cyan sharp px-12 py-6 text-3xl hidden hover:bg-white transition-all">Další otázka ➔</button>
         </div>
 
         <div id="teacher-question-view" class="hidden mb-12 text-center bg-[#00332a] p-8 border-4 border-[#f4816e]">
             <h2 id="teacher-question-text" class="text-5xl font-black mb-8 text-white leading-tight"></h2>
             <img id="teacher-question-image" src="" alt="Obrázek k otázce" class="max-h-80 mx-auto mb-8 hidden border-4 border-white object-contain">
             <div id="teacher-options" class="w-full"></div>
+        </div>
+
+        <!-- Závěrečná obrazovka učitele (skrytá během hry) -->
+        <div id="teacher-finished-view" class="hidden mb-12 text-center bg-[#00332a] p-12 border-4 border-[#00ffff]">
+            <h2 class="text-7xl font-black text-[#00ffff] uppercase mb-6">Konec testu!</h2>
+            <p class="text-3xl font-bold text-white mb-8">Díky za hru. Níže najdete finální pořadí.</p>
         </div>
 
         <h3 id="leaderboard-title" class="text-2xl font-bold uppercase text-[#00ffff] mb-4">Živý žebříček:</h3>
@@ -107,7 +113,6 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        // Přidán import getDocs pro jednorázové načtení studentů při vyhodnocování
         import { getFirestore, doc, setDoc, getDoc, getDocs, onSnapshot, collection, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
@@ -128,6 +133,7 @@
         let currentRole = null, roomPin = null, studentId = null;
         let quizData = [], currentQuestionIndex = 0;
         let timerInterval, timeLeft = 15, timeLimit = 15;
+        let currentRoomState = 'waiting'; // Důležitá proměnná pro správu logiky UI
         
         const views = {
             role: document.getElementById('view-role'),
@@ -182,6 +188,7 @@
         async function setupRoom() {
             roomPin = Math.floor(100000 + Math.random() * 900000).toString();
             document.getElementById('room-pin-display').innerText = roomPin;
+            currentRoomState = 'waiting';
             
             new QRCode(document.getElementById('qrcode'), {
                 text: window.location.origin + window.location.pathname + "?pin=" + roomPin,
@@ -190,25 +197,48 @@
 
             await setDoc(doc(db, "rooms", roomPin), { state: "waiting", questionIndex: 0, createdAt: new Date() });
             showView('teacher');
-            onSnapshot(doc(db, "rooms", roomPin), snap => { if(snap.data()) updateTeacherDashboard(snap.data()); });
-        }
 
-        function updateTeacherDashboard(roomData) {
+            // 1. posluchač: Změny nad samotnou místností
+            onSnapshot(doc(db, "rooms", roomPin), snap => { 
+                if(snap.exists()) {
+                    currentRoomState = snap.data().state;
+                    // Pokud už nejsme ve stavu čekání, navždy skryjeme tlačítko "Spustit kvíz"
+                    if(currentRoomState !== 'waiting') {
+                        document.getElementById('btn-start-quiz').classList.add('hidden');
+                    }
+                }
+            });
+
+            // 2. posluchač: Změny u studentů (odpovědi, body). Tyto dva procesy už se nekříží!
             onSnapshot(collection(db, "rooms", roomPin, "students"), snapshot => {
                 const board = document.getElementById('leaderboard');
                 board.innerHTML = "";
                 let count = 0;
                 
+                // Pole pro seřazení studentů podle bodů
+                let studentsArray = [];
+                
                 snapshot.forEach(docSnap => {
-                    const s = docSnap.data();
+                    studentsArray.push(docSnap.data());
+                });
+
+                // Žebříček vždy rovnou řadíme od nejlepšího
+                studentsArray.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+                studentsArray.forEach(s => {
                     count++;
                     const div = document.createElement('div');
-                    div.className = `p-4 text-center font-bold text-2xl uppercase sharp border-4 ${s.answeredCurrent ? 'bg-cyan text-[#004d40] border-white' : 'bg-[#00332a] border-[#00ffff] text-white'}`;
+                    div.className = `p-4 text-center font-bold text-2xl uppercase sharp border-4 ${s.answeredCurrent && currentRoomState === 'playing' ? 'bg-cyan text-[#004d40] border-white' : 'bg-[#00332a] border-[#00ffff] text-white'}`;
                     div.innerHTML = `${s.name}<br><span class="text-lg font-normal text-[#f4816e]">${s.score || 0} bodů</span>`;
                     board.appendChild(div);
                 });
+
                 document.getElementById('students-count').innerText = count;
-                if(roomData.state === 'waiting' && count > 0) document.getElementById('btn-start-quiz').classList.remove('hidden');
+                
+                // Startovací tlačítko ukaž JEN tehdy, pokud hra ještě nezačala
+                if(currentRoomState === 'waiting' && count > 0) {
+                    document.getElementById('btn-start-quiz').classList.remove('hidden');
+                }
             });
         }
 
@@ -231,23 +261,20 @@
             triggerQuestion(0);
         });
 
-        // --- NOVÁ FUNKCE: Vyhodnocení odpovědí ---
+        // Vyhodnocení odpovědí na konci časového limitu / před další otázkou
         async function evaluateCurrentQuestion(index, type) {
             const q = quizData[index];
             const correctVal = q.correctAnswer ? q.correctAnswer.toString().toLowerCase().trim() : '';
             const accepted = q.acceptedAnswers ? q.acceptedAnswers.map(a => a.toLowerCase().trim()) : [correctVal];
 
-            // Pomocná mapa pro multiple-choice (převod A,B,C,D na text odpovědi)
             let opts = q.options || ["A", "B", "C", "D"];
             const labels = ['A', 'B', 'C', 'D'];
             let labelToText = {};
             opts.forEach((opt, i) => { labelToText[labels[i]] = opt.toString().toLowerCase().trim(); });
 
-            // Načteme všechny studenty v místnosti
             const studentsRef = collection(db, "rooms", roomPin, "students");
             const snapshot = await getDocs(studentsRef);
 
-            // Projdeme studenty a přidělíme body
             snapshot.forEach(async (docSnap) => {
                 const s = docSnap.data();
                 if (s.answeredCurrent && s.lastAnswer) {
@@ -255,7 +282,6 @@
                     let sAnswer = s.lastAnswer.toString().toLowerCase().trim();
 
                     if (type === 'multiple-choice') {
-                        // Přeložíme písmeno (A) na text odpovědi a porovnáme
                         let textAnswer = labelToText[s.lastAnswer.toUpperCase()];
                         if (textAnswer === correctVal) isCorrect = true;
                     } else if (type === 'true-false') {
@@ -266,7 +292,6 @@
 
                     if (isCorrect) {
                         let timeR = s.timeRemaining || 0;
-                        // Základ 500 bodů + bonus za čas (max dalších 500)
                         let points = 500 + Math.floor((timeR / 15) * 500);
                         await updateDoc(docSnap.ref, { score: (s.score || 0) + points });
                     }
@@ -274,10 +299,9 @@
             });
         }
 
-        // Tlačítko Další otázka nyní nejprve vyhodnotí body a pak posune hru dál
         document.getElementById('btn-next-question').addEventListener('click', async () => {
             const btn = document.getElementById('btn-next-question');
-            btn.innerText = "Vyhodnocuji...";
+            btn.innerText = "Počítám body...";
             btn.disabled = true;
 
             const currentType = quizData[currentQuestionIndex].type ? quizData[currentQuestionIndex].type.trim() : 'multiple-choice';
@@ -290,9 +314,12 @@
             if(currentQuestionIndex < quizData.length) {
                 triggerQuestion(currentQuestionIndex);
             } else {
+                // Přechod na závěrečnou obrazovku
                 await updateDoc(doc(db, "rooms", roomPin), { state: "finished" });
-                document.getElementById('teacher-question-view').innerHTML = `<h2 class="text-7xl font-black text-[#00ffff] uppercase mb-4">Konec testu!</h2>`;
+                document.getElementById('teacher-question-view').classList.add('hidden');
+                document.getElementById('teacher-finished-view').classList.remove('hidden');
                 document.getElementById('btn-next-question').classList.add('hidden');
+                document.getElementById('leaderboard-title').innerText = "Finální žebříček:";
             }
         });
 
@@ -382,7 +409,8 @@
                 } else if (data.state === 'finished') {
                     document.getElementById('student-waiting').classList.remove('hidden');
                     document.getElementById('student-playing').classList.add('hidden');
-                    document.getElementById('student-waiting').innerHTML = `<h2 class="text-6xl font-black text-[#00ffff] uppercase mb-4">Hotovo!</h2>`;
+                    // Výraznější nápis pro studenta, že je po všem
+                    document.getElementById('student-waiting').innerHTML = `<h2 class="text-6xl font-black text-[#00ffff] uppercase mb-4">Konec testu!</h2><p class="text-2xl font-bold">Podívej se na projektor na výsledky.</p>`;
                 }
             });
         }
@@ -435,7 +463,6 @@
             }, 100);
         }
 
-        // Student už si žádné skóre nepočítá, jen odešle svou volbu a čas.
         async function submitAnswer(answerVal) {
             clearInterval(timerInterval);
             const area = document.getElementById('student-input-area');
