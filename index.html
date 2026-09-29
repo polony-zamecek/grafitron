@@ -4,6 +4,568 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Grafitron</title>
+    <!-- Tailwind CSS pro stylování -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Písmo Montserrat (Swiss Design) -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- Knihovna pro QR kódy -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode_js@1.0.0/qrcode.min.js"></script>
+
+    <style>
+        body { 
+            font-family: 'Montserrat', sans-serif; 
+            background-color: #ffffff; 
+            color: #004d40; 
+            margin: 0; 
+            min-height: 100vh;
+            background-image: radial-gradient(#004d40 1px, transparent 1px);
+            background-size: 40px 40px; 
+        }
+        
+        .btn { 
+            text-transform: uppercase; 
+            font-weight: 900; 
+            letter-spacing: 0.05em; 
+            transition: all 0.1s; 
+            border: 4px solid #004d40; 
+            box-shadow: 6px 6px 0px 0px #004d40;
+            outline: none; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            user-select: none;
+        }
+        .btn:active { 
+            transform: translate(4px, 4px); 
+            box-shadow: 2px 2px 0px 0px #004d40; 
+        }
+
+        .box-brutal {
+            border: 4px solid #004d40;
+            box-shadow: 8px 8px 0px 0px #004d40;
+            background-color: #ffffff;
+        }
+
+        .title-shadow { text-shadow: 6px 6px 0px #00ffff; }
+        .title-shadow-salmon { text-shadow: 6px 6px 0px #f4816e; }
+
+        .bg-salmon { background-color: #f4816e; color: #004d40; }
+        .bg-cyan { background-color: #00ffff; color: #004d40; }
+        .bg-white { background-color: #ffffff; color: #004d40; }
+        
+        .sharp { border-radius: 0; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        .grid-4 { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 1.5rem; }
+        @media (max-width: 640px) { .grid-4 { grid-template-columns: 1fr; grid-template-rows: repeat(4, 1fr); } }
+    </style>
+</head>
+<body class="flex flex-col p-4 md:p-8">
+
+    <!-- 1. OBRAZOVKA: VÝBĚR ROLE -->
+    <div id="view-role" class="flex-1 flex flex-col items-center justify-center space-y-12 h-screen">
+        <h1 class="text-6xl md:text-8xl font-black tracking-widest text-[#004d40] title-shadow">GRAFITRON</h1>
+        <div class="grid-2 w-full max-w-4xl h-48 md:h-64 mt-8">
+            <button id="btn-role-teacher" class="btn bg-cyan sharp text-3xl md:text-5xl">Učitel</button>
+            <button id="btn-role-student" class="btn bg-salmon sharp text-3xl md:text-5xl">Student</button>
+        </div>
+    </div>
+
+    <!-- 1.5 OBRAZOVKA: HESLO UČITELE -->
+    <div id="view-teacher-login" class="hidden flex-1 flex-col items-center justify-center space-y-8 h-screen w-full max-w-md mx-auto">
+        <h2 class="text-5xl font-black text-[#004d40] title-shadow-salmon mb-4 uppercase text-center">Přístup učitele</h2>
+        <input type="password" id="teacher-password" placeholder="HESLO" class="w-full p-6 text-4xl sharp text-center text-[#004d40] border-4 border-[#004d40] box-brutal font-black uppercase outline-none bg-white">
+        <button id="btn-verify-teacher" class="btn bg-cyan sharp w-full p-8 text-4xl mt-4">Vstoupit</button>
+        <button id="btn-back-to-role" class="btn bg-white sharp w-full p-4 text-xl mt-4">Zpět na výběr</button>
+        <div id="teacher-login-error" class="text-[#f4816e] font-black text-2xl text-center h-8"></div>
+    </div>
+
+    <!-- 2. OBRAZOVKA: UČITEL - VÝBĚR TESTU Z TABULKY -->
+    <div id="view-teacher-setup" class="hidden flex-1 flex-col items-center justify-center max-w-3xl mx-auto w-full h-screen">
+        <div class="box-brutal p-12 w-full flex flex-col items-center text-center">
+            <h2 class="text-5xl font-black text-[#004d40] mb-8 uppercase title-shadow-salmon">Příprava hry</h2>
+            <p id="teacher-loading" class="text-3xl mb-8 animate-pulse text-[#f4816e] font-black">Připojuji se ke Google Tabulce...</p>
+            
+            <div id="teacher-setup-form" class="hidden w-full flex flex-col space-y-8">
+                <label class="text-2xl uppercase font-black text-[#004d40]">Vyber test z tabulky:</label>
+                <select id="select-test" class="p-6 text-3xl sharp text-[#004d40] border-4 border-[#004d40] box-brutal uppercase font-black outline-none cursor-pointer bg-white">
+                    <!-- Doplní se automaticky -->
+                </select>
+                <button id="btn-create-room" class="btn bg-salmon sharp text-3xl p-8 mt-8">Založit místnost</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. OBRAZOVKA: UČITEL - LOBBY A HRA -->
+    <div id="view-teacher" class="hidden flex-1 flex-col w-full max-w-7xl mx-auto mt-4">
+        <div class="flex justify-between items-center mb-10 pb-6 border-b-8 border-[#004d40]">
+            <div>
+                <h2 class="text-3xl font-black uppercase text-[#004d40] tracking-widest mb-2">Připoj se na mobilu! PIN:</h2>
+                <div id="room-pin-display" class="text-7xl md:text-9xl font-black text-[#f4816e] title-shadow tracking-widest">------</div>
+            </div>
+            <div class="box-brutal p-4 bg-white">
+                <div id="qrcode"></div>
+            </div>
+        </div>
+
+        <div class="flex justify-between items-center mb-10 box-brutal bg-cyan p-8">
+            <h3 class="text-4xl font-black uppercase text-[#004d40]"><span id="students-count" class="text-[#f4816e] text-6xl mr-2">0</span> Studentů v místnosti</h3>
+            <button id="btn-start-quiz" class="btn bg-salmon sharp px-12 py-6 text-4xl hidden">Spustit kvíz</button>
+            <button id="btn-next-question" class="btn bg-white sharp px-12 py-6 text-3xl hidden">Další otázka ➔</button>
+        </div>
+
+        <div id="teacher-question-view" class="hidden mb-12 text-center box-brutal bg-white p-12">
+            <h2 id="teacher-question-text" class="text-5xl font-black mb-10 text-[#004d40] leading-tight"></h2>
+            <img id="teacher-question-image" src="" alt="Obrázek k otázce" class="max-h-80 mx-auto mb-10 hidden border-4 border-[#004d40] box-shadow-brutal object-contain">
+            <div id="teacher-options" class="w-full"></div>
+        </div>
+
+        <!-- Závěrečná obrazovka učitele -->
+        <div id="teacher-finished-view" class="hidden mb-12 text-center box-brutal bg-[#00ffff] p-16">
+            <h2 class="text-7xl font-black text-[#004d40] title-shadow-salmon uppercase mb-6">Konec testu!</h2>
+            <p class="text-3xl font-bold text-[#004d40] mb-8">Díky za hru. Níže najdete finální pořadí.</p>
+        </div>
+
+        <h3 id="leaderboard-title" class="text-3xl font-black uppercase text-[#004d40] mb-6 inline-block bg-[#00ffff] px-4 py-2 border-4 border-[#004d40]">Živý žebříček:</h3>
+        <div id="leaderboard" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6"></div>
+    </div>
+
+    <!-- 4. OBRAZOVKA: STUDENT - PŘIHLÁŠENÍ -->
+    <div id="view-student" class="hidden flex-1 flex-col items-center justify-center max-w-md mx-auto w-full h-screen space-y-8">
+        <h2 class="text-6xl font-black text-[#004d40] title-shadow-salmon mb-8 uppercase text-center">Vstup do hry</h2>
+        <input type="number" id="student-pin" placeholder="PIN" class="w-full p-6 text-4xl sharp text-center text-[#004d40] border-4 border-[#004d40] box-brutal font-black uppercase outline-none bg-white">
+        <input type="text" id="student-name" placeholder="PŘEZDÍVKA" class="w-full p-6 text-3xl sharp text-center text-[#004d40] border-4 border-[#004d40] box-brutal font-black uppercase outline-none bg-white">
+        <button id="btn-join-room" class="btn bg-cyan sharp w-full p-8 text-4xl mt-4">Hrát</button>
+        <button id="btn-back-to-role-student" class="btn bg-white sharp w-full p-4 text-xl mt-4">Zpět na výběr</button>
+        <div id="student-error" class="text-[#f4816e] font-black text-2xl text-center h-8"></div>
+    </div>
+
+    <!-- 5. OBRAZOVKA: STUDENT - HRA -->
+    <div id="view-student-game" class="hidden flex-1 flex-col w-full max-w-md mx-auto min-h-screen justify-center py-8">
+        <div id="student-waiting" class="text-center box-brutal bg-white p-10 mt-8">
+            <h2 class="text-6xl font-black text-[#004d40] title-shadow-salmon mb-6 uppercase animate-pulse">Čekáme!</h2>
+            <p class="text-2xl font-bold text-[#004d40]">Koukej na projektor.</p>
+        </div>
+
+        <div id="student-playing" class="hidden h-full flex flex-col justify-start pt-4">
+            <div class="mb-8 w-full bg-white box-brutal h-12 sharp relative p-1 shrink-0">
+                <div id="time-bar" class="bg-[#f4816e] h-full transition-all ease-linear border-r-4 border-[#004d40]" style="width: 100%;"></div>
+            </div>
+            
+            <div id="student-input-area" class="flex-1 w-full pb-8">
+                <!-- Tlačítka se vygenerují dynamicky -->
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc, getDocs, onSnapshot, collection, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyChRc14OD5Ca8KLxWMyRTy1zQnd3-j6O8w",
+            authDomain: "grafitron-110b5.firebaseapp.com",
+            projectId: "grafitron-110b5",
+            storageBucket: "grafitron-110b5.firebasestorage.app",
+            messagingSenderId: "593241952769",
+            appId: "1:593241952769:web:697e9a2059d96d33d72600"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw3okFjuvMe7LXCnOeqkDh8yTrQIc6UizWpr8pTq-zNsvQDLyTU4YeRMB5eMW9VOpHQ/exec";
+
+        const TEACHER_PASSWORD = "zamecek";
+
+        let currentRole = null, roomPin = null, studentId = null;
+        let quizData = [], currentQuestionIndex = 0;
+        let timerInterval, timeLeft = 15, timeLimit = 15;
+        let currentRoomState = 'waiting';
+        
+        const views = {
+            role: document.getElementById('view-role'),
+            teacherLogin: document.getElementById('view-teacher-login'),
+            teacherSetup: document.getElementById('view-teacher-setup'),
+            teacher: document.getElementById('view-teacher'),
+            studentLogin: document.getElementById('view-student'),
+            studentGame: document.getElementById('view-student-game')
+        };
+
+        function showView(viewName) {
+            Object.values(views).forEach(v => v.classList.add('hidden'));
+            views[viewName].classList.remove('hidden');
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        if(urlParams.has('pin')) {
+            document.getElementById('student-pin').value = urlParams.get('pin');
+            showView('studentLogin');
+        }
+
+        document.getElementById('btn-back-to-role').addEventListener('click', () => showView('role'));
+        document.getElementById('btn-back-to-role-student').addEventListener('click', () => showView('role'));
+
+        // --- UČITEL ---
+        
+        document.getElementById('btn-role-teacher').addEventListener('click', () => {
+            document.getElementById('teacher-password').value = "";
+            document.getElementById('teacher-login-error').innerText = "";
+            showView('teacherLogin');
+        });
+
+        document.getElementById('btn-verify-teacher').addEventListener('click', async () => {
+            const passInput = document.getElementById('teacher-password').value.trim().toLowerCase();
+            if(passInput === TEACHER_PASSWORD.toLowerCase()) {
+                currentRole = 'teacher';
+                showView('teacherSetup');
+                try {
+                    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getSheets`);
+                    const json = await res.json();
+                    if(json.status === 'success') {
+                        const select = document.getElementById('select-test');
+                        select.innerHTML = json.data.filter(s => s !== 'Nastavení').map(s => `<option value="${s}">${s}</option>`).join('');
+                        document.getElementById('teacher-loading').classList.add('hidden');
+                        document.getElementById('teacher-setup-form').classList.remove('hidden');
+                    }
+                } catch (e) {
+                    document.getElementById('teacher-loading').innerText = "CHYBA: Nelze se spojit s Tabulkou!";
+                }
+            } else {
+                document.getElementById('teacher-login-error').innerText = "NESPRÁVNÉ HESLO!";
+            }
+        });
+
+        document.getElementById('btn-create-room').addEventListener('click', async () => {
+            const btn = document.getElementById('btn-create-room');
+            btn.innerText = "NAČÍTÁM...";
+            try {
+                const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getQuestions&sheetName=${encodeURIComponent(document.getElementById('select-test').value)}`);
+                const json = await res.json();
+                if(json.status === 'success' && json.data.length > 0) {
+                    quizData = json.data;
+                    setupRoom();
+                } else btn.innerText = "CHYBA: TEST JE PRÁZDNÝ";
+            } catch (e) { btn.innerText = "CHYBA SPOJENÍ"; }
+        });
+
+        async function setupRoom() {
+            roomPin = Math.floor(100000 + Math.random() * 900000).toString();
+            document.getElementById('room-pin-display').innerText = roomPin;
+            currentRoomState = 'waiting';
+            
+            new QRCode(document.getElementById('qrcode'), {
+                text: window.location.origin + window.location.pathname + "?pin=" + roomPin,
+                width: 140, height: 140, colorDark : "#004d40", colorLight : "#ffffff"
+            });
+
+            await setDoc(doc(db, "rooms", roomPin), { state: "waiting", questionIndex: 0, createdAt: new Date() });
+            showView('teacher');
+
+            onSnapshot(doc(db, "rooms", roomPin), snap => { 
+                if(snap.exists()) {
+                    currentRoomState = snap.data().state;
+                    if(currentRoomState !== 'waiting') {
+                        document.getElementById('btn-start-quiz').classList.add('hidden');
+                    }
+                }
+            });
+
+            onSnapshot(collection(db, "rooms", roomPin, "students"), snapshot => {
+                const board = document.getElementById('leaderboard');
+                board.innerHTML = "";
+                let count = 0;
+                let studentsArray = [];
+                
+                snapshot.forEach(docSnap => { studentsArray.push(docSnap.data()); });
+                studentsArray.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+                studentsArray.forEach(s => {
+                    count++;
+                    const div = document.createElement('div');
+                    div.className = `p-4 text-center font-black text-2xl uppercase sharp box-brutal ${s.answeredCurrent && currentRoomState === 'playing' ? 'bg-[#00ffff]' : 'bg-white'}`;
+                    div.innerHTML = `${s.name}<br><span class="text-xl font-black text-[#f4816e] mt-2 block">${s.score || 0} bodů</span>`;
+                    board.appendChild(div);
+                });
+
+                document.getElementById('students-count').innerText = count;
+                if(currentRoomState === 'waiting' && count > 0) {
+                    document.getElementById('btn-start-quiz').classList.remove('hidden');
+                }
+            });
+        }
+
+        async function triggerQuestion(index) {
+            const q = quizData[index];
+            const type = q.type ? q.type.trim() : 'multiple-choice';
+            
+            // POSÍLÁME DO FIREBASE I TEXT OTÁZKY A MOŽNOSTI PRO MOBILY
+            await updateDoc(doc(db, "rooms", roomPin), {
+                state: "playing",
+                questionIndex: index,
+                questionType: type,
+                questionText: q.text || "",
+                questionOptions: q.options || [],
+                forceReset: Math.random()
+            });
+            showTeacherQuestion(index, type);
+        }
+
+        document.getElementById('btn-start-quiz').addEventListener('click', () => {
+            document.getElementById('btn-start-quiz').classList.add('hidden');
+            document.getElementById('btn-next-question').classList.remove('hidden');
+            triggerQuestion(0);
+        });
+
+        async function evaluateCurrentQuestion(index, type) {
+            const q = quizData[index];
+            const correctVal = q.correctAnswer ? q.correctAnswer.toString().toLowerCase().trim() : '';
+            const accepted = q.acceptedAnswers ? q.acceptedAnswers.map(a => a.toLowerCase().trim()) : [correctVal];
+
+            let opts = q.options || ["A", "B", "C", "D"];
+            const labels = ['A', 'B', 'C', 'D'];
+            let labelToText = {};
+            opts.forEach((opt, i) => { labelToText[labels[i]] = opt.toString().toLowerCase().trim(); });
+
+            const studentsRef = collection(db, "rooms", roomPin, "students");
+            const snapshot = await getDocs(studentsRef);
+
+            snapshot.forEach(async (docSnap) => {
+                const s = docSnap.data();
+                if (s.answeredCurrent && s.lastAnswer) {
+                    let isCorrect = false;
+                    let sAnswer = s.lastAnswer.toString().toLowerCase().trim();
+
+                    if (type === 'multiple-choice') {
+                        let textAnswer = labelToText[s.lastAnswer.toUpperCase()];
+                        if (textAnswer === correctVal) isCorrect = true;
+                    } else if (type === 'true-false') {
+                        if (sAnswer === correctVal) isCorrect = true;
+                    } else if (type === 'text-input') {
+                        if (accepted.includes(sAnswer)) isCorrect = true;
+                    }
+
+                    if (isCorrect) {
+                        let timeR = s.timeRemaining || 0;
+                        let points = 500 + Math.floor((timeR / 15) * 500);
+                        await updateDoc(docSnap.ref, { score: (s.score || 0) + points });
+                    }
+                }
+            });
+        }
+
+        document.getElementById('btn-next-question').addEventListener('click', async () => {
+            const btn = document.getElementById('btn-next-question');
+            btn.innerText = "Počítám...";
+            btn.disabled = true;
+
+            const currentType = quizData[currentQuestionIndex].type ? quizData[currentQuestionIndex].type.trim() : 'multiple-choice';
+            await evaluateCurrentQuestion(currentQuestionIndex, currentType);
+
+            currentQuestionIndex++;
+            btn.innerText = "Další otázka ➔";
+            btn.disabled = false;
+
+            if(currentQuestionIndex < quizData.length) {
+                triggerQuestion(currentQuestionIndex);
+            } else {
+                await updateDoc(doc(db, "rooms", roomPin), { state: "finished" });
+                document.getElementById('teacher-question-view').classList.add('hidden');
+                document.getElementById('teacher-finished-view').classList.remove('hidden');
+                document.getElementById('btn-next-question').classList.add('hidden');
+                document.getElementById('leaderboard-title').innerText = "Finální žebříček:";
+            }
+        });
+
+        function showTeacherQuestion(index, type) {
+            const q = quizData[index];
+            document.getElementById('teacher-question-view').classList.remove('hidden');
+            document.getElementById('teacher-question-text').innerText = q.text;
+            
+            const imgEl = document.getElementById('teacher-question-image');
+            if(q.image) { imgEl.src = q.image; imgEl.classList.remove('hidden'); } 
+            else imgEl.classList.add('hidden');
+
+            const optContainer = document.getElementById('teacher-options');
+            optContainer.innerHTML = '';
+
+            if(type === 'multiple-choice') {
+                optContainer.className = 'grid-4 w-full h-48 mt-8';
+                const colors = ['bg-[#f4816e]', 'bg-[#00ffff]', 'bg-white', 'bg-white'];
+                const labels = ['A', 'B', 'C', 'D'];
+                let opts = q.options || ["A", "B", "C", "D"];
+
+                opts.forEach((opt, i) => {
+                    const d = document.createElement('div');
+                    d.className = `box-brutal text-3xl p-6 ${colors[i % 4]} text-[#004d40] font-black flex items-center justify-start uppercase`;
+                    d.innerHTML = `<span class="mr-6 text-6xl font-black bg-[#004d40] text-white px-4 py-2 border-4 border-[#004d40] shrink-0">${labels[i%4]}</span> <span class="text-left">${opt}</span>`;
+                    optContainer.appendChild(d);
+                });
+            } else if (type === 'true-false') {
+                 optContainer.className = 'grid-2 w-full h-48 mt-8';
+                 optContainer.innerHTML = `
+                    <div class="box-brutal text-6xl p-6 bg-[#00ffff] text-[#004d40] font-black flex items-center justify-center">PRAVDA</div>
+                    <div class="box-brutal text-6xl p-6 bg-[#f4816e] text-[#004d40] font-black flex items-center justify-center">NEPRAVDA</div>
+                 `;
+            } else if (type === 'text-input') {
+                 optContainer.className = 'w-full h-32 flex items-center justify-center mt-8';
+                 optContainer.innerHTML = `<div class="text-4xl text-[#004d40] font-black uppercase animate-pulse border-b-8 border-[#f4816e] pb-4">Čekám na textové odpovědi...</div>`;
+            }
+        }
+
+        // --- STUDENT ---
+        document.getElementById('btn-role-student').addEventListener('click', () => {
+            currentRole = 'student';
+            showView('studentLogin');
+        });
+
+        document.getElementById('btn-join-room').addEventListener('click', async () => {
+            const pin = document.getElementById('student-pin').value.trim();
+            const name = document.getElementById('student-name').value.trim();
+            const err = document.getElementById('student-error');
+            if(!pin || !name) return err.innerText = "Zadej PIN i Jméno!";
+            
+            try {
+                const roomSnap = await getDoc(doc(db, "rooms", pin));
+                if(!roomSnap.exists()) return err.innerText = "Místnost neexistuje!";
+                
+                await signInAnonymously(auth);
+                roomPin = pin;
+                studentId = "std_" + Math.floor(Math.random() * 9999999); 
+                
+                await setDoc(doc(db, "rooms", roomPin, "students", studentId), { name, score: 0, answeredCurrent: false });
+                showView('studentGame');
+                listenToRoom();
+            } catch (e) { err.innerText = "Chyba připojení."; }
+        });
+
+        let lastReset = null;
+
+        function listenToRoom() {
+            onSnapshot(doc(db, "rooms", roomPin), async snap => {
+                const data = snap.data();
+                if(!data) return;
+
+                if(data.state === 'waiting') {
+                    document.getElementById('student-waiting').classList.remove('hidden');
+                    document.getElementById('student-playing').classList.add('hidden');
+                } else if(data.state === 'playing') {
+                    document.getElementById('student-waiting').classList.add('hidden');
+                    document.getElementById('student-playing').classList.remove('hidden');
+                    
+                    if(data.forceReset !== lastReset) {
+                        lastReset = data.forceReset;
+                        await updateDoc(doc(db, "rooms", roomPin, "students", studentId), { answeredCurrent: false });
+                        
+                        // VOLÁME VYKRESLENÍ UI A PŘEDÁVÁME TEXTY
+                        buildStudentUI(data.questionType || 'multiple-choice', data.questionText, data.questionOptions);
+                        startStudentTimer(15);
+                    }
+                } else if (data.state === 'finished') {
+                    document.getElementById('student-waiting').classList.remove('hidden');
+                    document.getElementById('student-playing').classList.add('hidden');
+                    document.getElementById('student-waiting').innerHTML = `<h2 class="text-7xl font-black text-[#004d40] title-shadow-salmon uppercase mb-6">Konec testu!</h2><p class="text-3xl font-bold text-[#004d40]">Podívej se na projektor na výsledky.</p>`;
+                }
+            });
+        }
+
+        // UPRAVENÁ FUNKCE PRO VYKRESLENÍ TEXTU A ODPOVĚDÍ NA MOBILU
+        function buildStudentUI(type, qText, qOptions) {
+            const area = document.getElementById('student-input-area');
+            area.innerHTML = '';
+            
+            // Vygenerování bloku se zněním otázky
+            let questionHtml = '';
+            if (qText) {
+                questionHtml = `
+                    <div class="box-brutal bg-[#00ffff] p-6 mb-6 mt-2 border-4 border-[#004d40] text-center">
+                        <h3 class="text-2xl font-black text-[#004d40] uppercase leading-snug">${qText}</h3>
+                    </div>`;
+            }
+            
+            if(type === 'multiple-choice') {
+                area.className = 'flex flex-col space-y-4 w-full h-auto pb-4';
+                area.innerHTML = questionHtml;
+                
+                const btnContainer = document.createElement('div');
+                btnContainer.className = 'flex flex-col space-y-4 w-full';
+
+                const colors = ['bg-[#f4816e]', 'bg-white', 'bg-[#00ffff]', 'bg-white'];
+                const labels = ['A', 'B', 'C', 'D'];
+                let opts = qOptions && qOptions.length > 0 ? qOptions : ["A", "B", "C", "D"];
+                
+                for(let i=0; i<4; i++) {
+                    const btn = document.createElement('button');
+                    // Tlačítka jsou teď flex řádky se zarovnáním doleva, aby text mohl natékat
+                    btn.className = `btn sharp text-xl md:text-3xl p-4 md:p-6 ${colors[i%4]} text-[#004d40] font-black flex flex-row items-center justify-start text-left`;
+                    const optText = opts[i] || labels[i];
+                    btn.innerHTML = `<span class="mr-4 text-3xl font-black bg-[#004d40] text-white px-4 py-2 border-4 border-[#004d40] shrink-0">${labels[i]}</span> <span>${optText}</span>`;
+                    btn.onclick = () => submitAnswer(labels[i]);
+                    btnContainer.appendChild(btn);
+                }
+                area.appendChild(btnContainer);
+
+            } else if (type === 'true-false') {
+                area.className = 'flex flex-col w-full h-auto pb-4';
+                area.innerHTML = questionHtml + `
+                    <div class="grid-2 w-full mt-4">
+                        <button id="btn-true" class="btn sharp text-3xl md:text-5xl p-8 bg-[#00ffff] text-[#004d40] font-black">PRAVDA</button>
+                        <button id="btn-false" class="btn sharp text-3xl md:text-5xl p-8 bg-[#f4816e] text-[#004d40] font-black">NEPRAVDA</button>
+                    </div>
+                `;
+                document.getElementById('btn-true').onclick = () => submitAnswer('pravda');
+                document.getElementById('btn-false').onclick = () => submitAnswer('nepravda');
+            } else if (type === 'text-input') {
+                area.className = 'flex flex-col space-y-6 w-full justify-center h-auto pb-4';
+                area.innerHTML = questionHtml + `
+                    <div class="mt-4">
+                        <input type="text" id="text-answer" placeholder="NAPIŠ ODPOVĚĎ..." class="w-full p-8 text-3xl md:text-4xl sharp text-center text-[#004d40] border-4 border-[#004d40] box-brutal font-black uppercase outline-none bg-white">
+                        <button id="btn-submit-text" class="btn bg-cyan sharp w-full p-8 text-4xl mt-6">ODESLAT</button>
+                    </div>
+                `;
+                document.getElementById('btn-submit-text').onclick = () => {
+                    const val = document.getElementById('text-answer').value.trim();
+                    if(val) submitAnswer(val);
+                };
+            }
+        }
+
+        function startStudentTimer(seconds) {
+            clearInterval(timerInterval);
+            const bar = document.getElementById('time-bar');
+            timeLimit = seconds; timeLeft = seconds;
+            
+            timerInterval = setInterval(() => {
+                timeLeft -= 0.1;
+                bar.style.width = Math.max(0, (timeLeft / timeLimit) * 100) + '%';
+                if(timeLeft <= 0) { clearInterval(timerInterval); submitAnswer(-1); }
+            }, 100);
+        }
+
+        async function submitAnswer(answerVal) {
+            clearInterval(timerInterval);
+            const area = document.getElementById('student-input-area');
+            area.className = 'flex items-center justify-center h-[50vh] mt-10';
+            area.innerHTML = answerVal === -1 
+                ? `<div class="box-brutal bg-[#f4816e] p-10 text-center"><h2 class="text-4xl md:text-5xl font-black uppercase text-[#004d40]">Čas vypršel!</h2></div>` 
+                : `<div class="box-brutal bg-[#00ffff] p-10 text-center"><h2 class="text-4xl md:text-5xl font-black uppercase text-[#004d40]">Odesláno!</h2></div>`;
+            
+            const sRef = doc(db, "rooms", roomPin, "students", studentId);
+            await updateDoc(sRef, { 
+                answeredCurrent: true, 
+                lastAnswer: answerVal === -1 ? null : answerVal,
+                timeRemaining: timeLeft
+            });
+        }
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grafitron</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/qrcode_js@1.0.0/qrcode.min.js"></script>
