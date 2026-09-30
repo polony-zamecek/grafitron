@@ -117,6 +117,11 @@
                         <input type="checkbox" id="shuffle-questions" class="brutal-checkbox shrink-0">
                         <label for="shuffle-questions" class="text-2xl font-black text-[#004d40] uppercase cursor-pointer select-none text-left leading-tight">Zamíchat otázky a odpovědi</label>
                     </div>
+                    <!-- NOVÝ CHECKBOX PRO OKAMŽITÉ HODNOCENÍ -->
+                    <div class="flex items-center justify-start space-x-6 w-full">
+                        <input type="checkbox" id="immediate-feedback" class="brutal-checkbox shrink-0">
+                        <label for="immediate-feedback" class="text-2xl font-black text-[#004d40] uppercase cursor-pointer select-none text-left leading-tight">Okamžité hodnocení (Správně/Špatně ihned po odeslání)</label>
+                    </div>
                 </div>
 
                 <button id="btn-create-room" class="btn bg-salmon sharp text-3xl p-8 mt-8 w-full">Založit místnost</button>
@@ -153,7 +158,7 @@
         <div id="teacher-question-view" class="hidden mb-8 box-brutal bg-gray-100 p-6 flex flex-col md:flex-row gap-6">
             <div class="flex-1">
                 <h2 class="text-sm font-bold uppercase text-gray-500 mb-2">Právě se zobrazuje na projektoru:</h2>
-                <h2 id="teacher-question-text" class="text-3xl font-black mb-4 text-[#004d40] leading-tight break-words"></h2>
+                <h2 id="teacher-question-text" class="text-3xl font-black mb-4 text-[#004d40] leading-tight"></h2>
                 <div id="teacher-options" class="w-full"></div>
             </div>
             <div class="w-48 shrink-0 flex items-center justify-center border-l-4 border-dashed border-gray-300 pl-6">
@@ -167,21 +172,12 @@
 
         <div id="teacher-leaderboard-section" class="flex flex-col">
             <h3 id="leaderboard-title" class="text-xl font-black uppercase text-[#004d40] mb-4 inline-block bg-[#00ffff] px-4 py-2 border-4 border-[#004d40] self-start">Stav třídy:</h3>
-            
-            <!-- Kartičky studentů nahoře -->
             <div id="leaderboard" class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-4 mb-8"></div>
             
-            <!-- Analytika přesunuta POD kartičky studentů -->
             <div id="teacher-analytics" class="hidden w-full bg-gray-100 p-6 box-brutal mb-8">
                 <h4 class="text-xl font-black uppercase text-[#004d40] mb-4">Živá statistika odpovědí:</h4>
-                
-                <div id="analytics-bar" class="w-full h-10 flex border-4 border-[#004d40] mb-6 bg-white overflow-hidden">
-                    <!-- Plní se dynamicky z JS -->
-                </div>
-                
-                <div id="analytics-breakdown" class="w-full">
-                    <!-- Plní se dynamicky z JS -->
-                </div>
+                <div id="analytics-bar" class="w-full h-10 flex border-4 border-[#004d40] mb-6 bg-white overflow-hidden"></div>
+                <div id="analytics-breakdown" class="w-full"></div>
             </div>
         </div>
     </div>
@@ -198,7 +194,7 @@
 
     <!-- 5. OBRAZOVKA: STUDENT - HRA -->
     <div id="view-student-game" class="hidden flex-1 flex-col w-full max-w-md mx-auto min-h-screen justify-center py-8">
-        <div id="student-waiting" class="text-center box-brutal bg-white p-10 mt-8">
+        <div id="student-waiting" class="text-center box-brutal bg-white p-10 mt-8 border-4 border-[#004d40]">
             <h2 class="text-6xl font-black text-[#004d40] title-shadow-salmon mb-6 uppercase animate-pulse">Čekáme!</h2>
             <p class="text-2xl font-bold text-[#004d40]">Koukej na projektor.</p>
         </div>
@@ -228,7 +224,6 @@
             <p class="text-3xl md:text-4xl font-black text-[#004d40] mt-12 animate-pulse shrink-0">Čekáme na spuštění testu učitelem...</p>
         </div>
 
-        <!-- OŠETŘENO PROTI PŘETEČENÍ: line-clamp a min-h-0 -->
         <div id="proj-game" class="hidden flex-col items-center justify-between h-full p-4 lg:p-8 w-full max-w-[90rem] mx-auto overflow-hidden">
             <h2 id="proj-question-text" class="font-black text-[#004d40] leading-tight text-center shrink-0 w-full mt-2 text-[clamp(1.8rem,5vh,4.5rem)] overflow-hidden line-clamp-3"></h2>
             
@@ -269,6 +264,7 @@
         let quizData = [], currentQuestionIndex = 0;
         let timerInterval, timeLeft = 0, timeLimit = 0;
         let currentRoomState = 'waiting';
+        let currentRoomDataStudent = null; // Uchovává globální nastavení místnosti pro studenta
         
         const views = {
             role: document.getElementById('view-role'),
@@ -283,6 +279,32 @@
         function showView(viewName) {
             Object.values(views).forEach(v => v.classList.add('hidden'));
             views[viewName].classList.remove('hidden');
+        }
+
+        // GLOBÁLNÍ FUNKCE PRO KONTROLU ODPOVĚDÍ
+        function checkAnswerIsCorrect(sAnswer, type, q) {
+            if (!q) return false;
+            const correctVal = q.correctAnswer ? q.correctAnswer.toString().toLowerCase().trim() : '';
+            const accepted = q.acceptedAnswers ? q.acceptedAnswers.map(a => a.toLowerCase().trim()) : [correctVal];
+
+            if (sAnswer === null || sAnswer === undefined) return false;
+
+            let sAnswerRaw = sAnswer.toString().toUpperCase().trim();
+            let sAnswerLower = sAnswer.toString().toLowerCase().trim();
+
+            if (type === 'multiple-choice') {
+                let opts = q.options || ["A", "B", "C", "D"];
+                const labels = ['A', 'B', 'C', 'D'];
+                let labelToText = {};
+                opts.forEach((opt, i) => { labelToText[labels[i]] = opt.toString().toLowerCase().trim(); });
+                let textAnswer = labelToText[sAnswerRaw];
+                return textAnswer === correctVal;
+            } else if (type === 'true-false') {
+                return sAnswerLower === correctVal;
+            } else if (type === 'text-input') {
+                return accepted.includes(sAnswerLower);
+            }
+            return false;
         }
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -396,6 +418,7 @@
             currentRoomState = 'waiting';
             
             const requiresAuth = document.getElementById('require-email-auth').checked;
+            const immediateFeedback = document.getElementById('immediate-feedback').checked;
             
             document.getElementById('btn-open-projector').onclick = () => {
                 window.open(window.location.origin + window.location.pathname + "?projector=" + roomPin, "_blank");
@@ -405,14 +428,18 @@
                 state: "waiting", 
                 questionIndex: 0, 
                 createdAt: new Date(),
-                requireAuth: requiresAuth 
+                requireAuth: requiresAuth,
+                immediateFeedback: immediateFeedback
             });
             
             showView('teacher');
 
+            let currentRoomDataTeacher = null;
+
             onSnapshot(doc(db, "rooms", roomPin), snap => { 
                 if(snap.exists()) {
-                    currentRoomState = snap.data().state;
+                    currentRoomDataTeacher = snap.data();
+                    currentRoomState = currentRoomDataTeacher.state;
                 }
             });
 
@@ -423,10 +450,27 @@
                 let answeredCount = 0;
                 let studentsArray = [];
                 
-                // STATISTIKA PRO ANALYTIKU
                 let stats = { correct: 0, incorrect: 0, timeout: 0, answers: {} };
-                
-                snapshot.forEach(docSnap => { studentsArray.push(docSnap.data()); });
+
+                // LIVE VYHODNOCENÍ - pokud je aktivní okamžité hodnocení
+                snapshot.forEach(docSnap => { 
+                    let s = docSnap.data();
+                    if (currentRoomDataTeacher && currentRoomDataTeacher.immediateFeedback && s.answeredCurrent && s.isCorrect === null) {
+                         const q = quizData[currentQuestionIndex];
+                         const type = q.type ? q.type.trim() : 'multiple-choice';
+                         let isCorrect = false;
+                         if (s.lastAnswer !== null && s.lastAnswer !== undefined) {
+                             isCorrect = checkAnswerIsCorrect(s.lastAnswer, type, q);
+                         }
+                         s.isCorrect = isCorrect;
+                         s.score = (s.score || 0) + (isCorrect ? 100 : 0);
+                         
+                         // Asynchronní zápis do DB
+                         updateDoc(docSnap.ref, { isCorrect: isCorrect, score: s.score });
+                    }
+                    studentsArray.push(s); 
+                });
+
                 studentsArray.sort((a, b) => (b.score || 0) - (a.score || 0));
 
                 studentsArray.forEach(s => {
@@ -443,30 +487,27 @@
                             stats.timeout++;
                         } else {
                             let isCorrect = false;
-                            let sAnswerRaw = s.lastAnswer.toString().toUpperCase().trim();
-                            let sAnswerLower = s.lastAnswer.toString().toLowerCase().trim();
-
-                            if (quizData[currentQuestionIndex]) {
+                            
+                            // Pokud je okamžité hodnocení, data už máme spočítaná ze snapshot loopu výše
+                            if (s.isCorrect !== undefined && s.isCorrect !== null) {
+                                isCorrect = s.isCorrect;
+                            } else {
                                 const q = quizData[currentQuestionIndex];
                                 const type = q.type ? q.type.trim() : 'multiple-choice';
-                                const correctVal = q.correctAnswer ? q.correctAnswer.toString().toLowerCase().trim() : '';
-                                const accepted = q.acceptedAnswers ? q.acceptedAnswers.map(a => a.toLowerCase().trim()) : [correctVal];
+                                isCorrect = checkAnswerIsCorrect(s.lastAnswer, type, q);
+                            }
 
+                            // Sběr dat do statistik
+                            if (quizData[currentQuestionIndex]) {
+                                const type = quizData[currentQuestionIndex].type ? quizData[currentQuestionIndex].type.trim() : 'multiple-choice';
+                                let sAnswerRaw = s.lastAnswer.toString().toUpperCase().trim();
+                                let sAnswerLower = s.lastAnswer.toString().toLowerCase().trim();
                                 if (type === 'multiple-choice') {
-                                    let opts = q.options || ["A", "B", "C", "D"];
-                                    const labels = ['A', 'B', 'C', 'D'];
-                                    let labelToText = {};
-                                    opts.forEach((opt, i) => { labelToText[labels[i]] = opt.toString().toLowerCase().trim(); });
-                                    let textAnswer = labelToText[sAnswerRaw];
-                                    if (textAnswer === correctVal) isCorrect = true;
-                                    
                                     stats.answers[sAnswerRaw] = (stats.answers[sAnswerRaw] || 0) + 1;
                                 } else if (type === 'true-false') {
-                                    if (sAnswerLower === correctVal) isCorrect = true;
                                     let key = sAnswerLower === 'pravda' ? 'PRAVDA' : 'NEPRAVDA';
                                     stats.answers[key] = (stats.answers[key] || 0) + 1;
                                 } else if (type === 'text-input') {
-                                    if (accepted.includes(sAnswerLower)) isCorrect = true;
                                     stats.answers[s.lastAnswer.toString().trim()] = (stats.answers[s.lastAnswer.toString().trim()] || 0) + 1;
                                 }
                             }
@@ -493,7 +534,6 @@
                 document.getElementById('total-count').innerText = count;
                 document.getElementById('answered-count').innerText = answeredCount;
 
-                // VYKRESLENÍ ŽIVÉ ANALYTIKY (Pod studenty)
                 const analyticsSection = document.getElementById('teacher-analytics');
                 if (currentRoomState === 'playing' && answeredCount > 0) {
                     analyticsSection.classList.remove('hidden');
@@ -579,38 +619,25 @@
         });
 
         async function evaluateCurrentQuestion(index, type) {
-            const q = quizData[index];
-            const correctVal = q.correctAnswer ? q.correctAnswer.toString().toLowerCase().trim() : '';
-            const accepted = q.acceptedAnswers ? q.acceptedAnswers.map(a => a.toLowerCase().trim()) : [correctVal];
-
-            let opts = q.options || ["A", "B", "C", "D"];
-            const labels = ['A', 'B', 'C', 'D'];
-            let labelToText = {};
-            opts.forEach((opt, i) => { labelToText[labels[i]] = opt.toString().toLowerCase().trim(); });
-
             const studentsRef = collection(db, "rooms", roomPin, "students");
             const snapshot = await getDocs(studentsRef);
-
             const promises = [];
 
             snapshot.forEach((docSnap) => {
                 const s = docSnap.data();
-                let isCorrect = false;
                 
-                if (s.answeredCurrent && s.lastAnswer !== null && s.lastAnswer !== undefined) {
-                    let sAnswerRaw = s.lastAnswer.toString().toUpperCase().trim();
-                    let sAnswerLower = s.lastAnswer.toString().toLowerCase().trim();
-                    if (type === 'multiple-choice') {
-                        let textAnswer = labelToText[sAnswerRaw];
-                        if (textAnswer === correctVal) isCorrect = true;
-                    } else if (type === 'true-false') {
-                        if (sAnswerLower === correctVal) isCorrect = true;
-                    } else if (type === 'text-input') {
-                        if (accepted.includes(sAnswerLower)) isCorrect = true;
-                    }
+                // Pokud už byl student hodnocen live, jen zresetujeme hodnoty a nepřidáváme znovu body
+                if (s.isCorrect !== null && s.isCorrect !== undefined) {
+                    promises.push(updateDoc(docSnap.ref, { answeredCurrent: false, lastAnswer: null, isCorrect: null }));
+                    return;
                 }
 
-                let updates = { answeredCurrent: false, lastAnswer: null };
+                let isCorrect = false;
+                if (s.answeredCurrent && s.lastAnswer !== null && s.lastAnswer !== undefined) {
+                    isCorrect = checkAnswerIsCorrect(s.lastAnswer, type, quizData[index]);
+                }
+
+                let updates = { answeredCurrent: false, lastAnswer: null, isCorrect: null };
                 if (isCorrect) {
                     updates.score = (s.score || 0) + 100;
                 }
@@ -683,7 +710,7 @@
         }
 
 
-        // --- LOGIKA PROJEKTORU (STABILNÍ CSS ZAROVNÁNÍ) ---
+        // --- LOGIKA PROJEKTORU ---
         function setupProjectorMode() {
             showView('projector');
             document.getElementById('proj-pin-display').innerText = roomPin;
@@ -812,6 +839,8 @@
                 const data = snap.data();
                 if(!data) return;
 
+                currentRoomDataStudent = data;
+
                 if(data.state === 'waiting') {
                     document.getElementById('student-waiting').classList.remove('hidden');
                     document.getElementById('student-playing').classList.add('hidden');
@@ -821,7 +850,8 @@
                     
                     if(data.forceReset !== lastReset) {
                         lastReset = data.forceReset;
-                        await updateDoc(doc(db, "rooms", roomPin, "students", studentId), { answeredCurrent: false });
+                        // STUDENT SI RESETUJE isCorrect na null a čeká na novou otázku
+                        await updateDoc(doc(db, "rooms", roomPin, "students", studentId), { answeredCurrent: false, lastAnswer: null, isCorrect: null });
                         
                         buildStudentUI(data.questionType || 'multiple-choice', data.questionText, data.questionOptions);
                         
@@ -838,6 +868,24 @@
                     document.getElementById('student-waiting').classList.remove('hidden');
                     document.getElementById('student-playing').classList.add('hidden');
                     document.getElementById('student-waiting').innerHTML = `<h2 class="text-7xl font-black text-[#004d40] title-shadow-salmon uppercase mb-6">Konec testu!</h2><p class="text-3xl font-bold text-[#004d40]">Podívej se na projektor na výsledky.</p>`;
+                }
+            });
+
+            // STUDENT POSLOUCHÁ VLASTNÍ DOKUMENT PRO OKAMŽITÉ HODNOCENÍ Z VELÍNU UČITELE
+            onSnapshot(doc(db, "rooms", roomPin, "students", studentId), snap => {
+                const sData = snap.data();
+                if(!sData) return;
+
+                if (sData.answeredCurrent && sData.isCorrect !== null && sData.isCorrect !== undefined) {
+                     const area = document.getElementById('student-input-area');
+                     
+                     if (sData.lastAnswer === null) {
+                         area.innerHTML = `<div class="box-brutal bg-gray-400 p-10 text-center border-4 border-[#004d40] h-[50vh] flex flex-col justify-center"><h2 class="text-4xl md:text-5xl font-black uppercase text-white">Čas vypršel!</h2><p class="text-xl font-bold mt-4 text-white">Bohužel, 0 bodů.</p></div>`;
+                     } else if (sData.isCorrect) {
+                         area.innerHTML = `<div class="box-brutal bg-[#00ffff] p-10 text-center border-4 border-[#004d40] h-[50vh] flex flex-col justify-center"><h2 class="text-4xl md:text-5xl font-black uppercase text-[#004d40]">Správně!</h2><p class="text-2xl font-black mt-4 text-[#f4816e]">+100 bodů</p></div>`;
+                     } else {
+                         area.innerHTML = `<div class="box-brutal bg-[#f4816e] p-10 text-center border-4 border-[#004d40] h-[50vh] flex flex-col justify-center"><h2 class="text-4xl md:text-5xl font-black uppercase text-white">Špatně!</h2></div>`;
+                     }
                 }
             });
         }
@@ -916,9 +964,21 @@
             clearInterval(timerInterval);
             const area = document.getElementById('student-input-area');
             area.className = 'flex items-center justify-center h-[50vh] mt-10';
-            area.innerHTML = answerVal === -1 
-                ? `<div class="box-brutal bg-[#f4816e] p-10 text-center"><h2 class="text-4xl md:text-5xl font-black uppercase text-[#004d40]">Čas vypršel!</h2></div>` 
-                : `<div class="box-brutal bg-[#00ffff] p-10 text-center"><h2 class="text-4xl md:text-5xl font-black uppercase text-[#004d40]">Odesláno!</h2></div>`;
+            
+            // Reakce dle toho, jestli je zapnuté okamžité vyhodnocení
+            if (currentRoomDataStudent && currentRoomDataStudent.immediateFeedback) {
+                if (answerVal === -1) {
+                    area.innerHTML = `<div class="box-brutal bg-gray-400 p-10 text-center border-4 border-[#004d40] h-[50vh] flex flex-col justify-center"><h2 class="text-4xl md:text-5xl font-black uppercase text-white">Čas vypršel!</h2></div>`;
+                } else {
+                    area.innerHTML = `<div class="box-brutal bg-white p-10 text-center border-4 border-[#004d40] h-[50vh] flex flex-col justify-center"><h2 class="text-4xl md:text-5xl font-black uppercase text-[#004d40] animate-pulse">Vyhodnocuji...</h2></div>`;
+                }
+            } else {
+                if (answerVal === -1) {
+                    area.innerHTML = `<div class="box-brutal bg-gray-400 p-10 text-center border-4 border-[#004d40] h-[50vh] flex flex-col justify-center"><h2 class="text-4xl md:text-5xl font-black uppercase text-white">Čas vypršel!</h2></div>`;
+                } else {
+                    area.innerHTML = `<div class="box-brutal bg-white p-10 text-center border-4 border-[#004d40] h-[50vh] flex flex-col justify-center"><h2 class="text-4xl md:text-5xl font-black uppercase text-[#004d40]">Odesláno!</h2><p class="text-xl font-bold mt-4 text-[#004d40]">Čekej na ostatní...</p></div>`;
+                }
+            }
             
             const sRef = doc(db, "rooms", roomPin, "students", studentId);
             await updateDoc(sRef, { 
