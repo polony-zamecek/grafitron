@@ -350,7 +350,6 @@
                 if(json.status === 'success' && json.data.length > 0) {
                     let fetchedData = json.data;
 
-                    // MÍCHÁNÍ OTÁZEK A ODPOVĚDÍ
                     if (document.getElementById('shuffle-questions').checked) {
                         const shuffle = (array) => {
                             for (let i = array.length - 1; i > 0; i--) {
@@ -359,16 +358,10 @@
                             }
                             return array;
                         };
-
-                        // Zamícháme celkové pořadí otázek
                         shuffle(fetchedData);
-
-                        // U výběrových otázek zamícháme vnitřní možnosti
                         fetchedData.forEach(q => {
                             const type = q.type ? q.type.trim() : 'multiple-choice';
-                            if (type === 'multiple-choice' && q.options && q.options.length > 0) {
-                                shuffle(q.options);
-                            }
+                            if (type === 'multiple-choice' && q.options && q.options.length > 0) shuffle(q.options);
                         });
                     }
 
@@ -420,9 +413,52 @@
                     count++;
                     if(s.answeredCurrent && currentRoomState === 'playing') answeredCount++;
                     
+                    // --- NOVÁ LOGIKA BAREV PRO UČITELSKÝ DASHBOARD ---
+                    let boxClass = 'bg-white text-[#004d40]';
+                    let scoreClass = 'text-[#f4816e]';
+
+                    if (s.answeredCurrent && currentRoomState === 'playing') {
+                        if (s.lastAnswer === null || s.lastAnswer === undefined) {
+                            // Čas vypršel (šedá)
+                            boxClass = 'bg-gray-400 text-white border-gray-500';
+                            scoreClass = 'text-white opacity-80';
+                        } else {
+                            // Okamžité vyhodnocení správnosti
+                            let isCorrect = false;
+                            if (quizData[currentQuestionIndex]) {
+                                const q = quizData[currentQuestionIndex];
+                                const type = q.type ? q.type.trim() : 'multiple-choice';
+                                const correctVal = q.correctAnswer ? q.correctAnswer.toString().toLowerCase().trim() : '';
+                                const accepted = q.acceptedAnswers ? q.acceptedAnswers.map(a => a.toLowerCase().trim()) : [correctVal];
+                                let sAnswer = s.lastAnswer.toString().toLowerCase().trim();
+
+                                if (type === 'multiple-choice') {
+                                    let opts = q.options || ["A", "B", "C", "D"];
+                                    const labels = ['A', 'B', 'C', 'D'];
+                                    let labelToText = {};
+                                    opts.forEach((opt, i) => { labelToText[labels[i]] = opt.toString().toLowerCase().trim(); });
+                                    let textAnswer = labelToText[s.lastAnswer.toUpperCase()];
+                                    if (textAnswer === correctVal) isCorrect = true;
+                                } else if (type === 'true-false') {
+                                    if (sAnswer === correctVal) isCorrect = true;
+                                } else if (type === 'text-input') {
+                                    if (accepted.includes(sAnswer)) isCorrect = true;
+                                }
+                            }
+                            
+                            if (isCorrect) {
+                                boxClass = 'bg-[#00ffff] text-[#004d40]'; // Správně (modře/tyrkys)
+                                scoreClass = 'text-[#004d40] opacity-70';
+                            } else {
+                                boxClass = 'bg-[#f4816e] text-white border-[#004d40]'; // Špatně (růžově/losos)
+                                scoreClass = 'text-white opacity-80';
+                            }
+                        }
+                    }
+
                     const div = document.createElement('div');
-                    div.className = `p-3 text-center font-black text-xl uppercase sharp box-brutal ${s.answeredCurrent && currentRoomState === 'playing' ? 'bg-[#00ffff]' : 'bg-white'}`;
-                    div.innerHTML = `${s.name}<br><span class="text-sm font-black text-[#f4816e] mt-1 block">${s.score || 0} b.</span>`;
+                    div.className = `p-3 text-center font-black text-xl uppercase sharp box-brutal ${boxClass}`;
+                    div.innerHTML = `${s.name}<br><span class="text-sm font-black mt-1 block ${scoreClass}">${s.score || 0} b.</span>`;
                     board.appendChild(div);
                 });
 
@@ -483,10 +519,13 @@
             const studentsRef = collection(db, "rooms", roomPin, "students");
             const snapshot = await getDocs(studentsRef);
 
-            snapshot.forEach(async (docSnap) => {
+            const promises = [];
+
+            snapshot.forEach((docSnap) => {
                 const s = docSnap.data();
-                if (s.answeredCurrent && s.lastAnswer) {
-                    let isCorrect = false;
+                let isCorrect = false;
+                
+                if (s.answeredCurrent && s.lastAnswer !== null && s.lastAnswer !== undefined) {
                     let sAnswer = s.lastAnswer.toString().toLowerCase().trim();
                     if (type === 'multiple-choice') {
                         let textAnswer = labelToText[s.lastAnswer.toUpperCase()];
@@ -496,12 +535,18 @@
                     } else if (type === 'text-input') {
                         if (accepted.includes(sAnswer)) isCorrect = true;
                     }
-
-                    if (isCorrect) {
-                        await updateDoc(docSnap.ref, { score: (s.score || 0) + 100 });
-                    }
                 }
+
+                // POJISTKA PROTI PROBLIKÁVÁNÍ: Resetujeme status okamžitě spolu s body
+                let updates = { answeredCurrent: false, lastAnswer: null };
+                if (isCorrect) {
+                    updates.score = (s.score || 0) + 100;
+                }
+                
+                promises.push(updateDoc(docSnap.ref, updates));
             });
+            
+            await Promise.all(promises);
         }
 
         document.getElementById('btn-next-question').addEventListener('click', async () => {
@@ -700,7 +745,8 @@
                     
                     if(data.forceReset !== lastReset) {
                         lastReset = data.forceReset;
-                        await updateDoc(doc(db, "rooms", roomPin, "students", studentId), { answeredCurrent: false });
+                        // Nechat reset 'answeredCurrent' JEN na učiteli (zabraňuje race condition)
+                        // Student si tady pouze překreslí UI a pustí časovač
                         
                         buildStudentUI(data.questionType || 'multiple-choice', data.questionText, data.questionOptions);
                         
