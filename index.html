@@ -61,7 +61,6 @@
 
         .title-shadow { text-shadow: 6px 6px 0px #00ffff; }
         .title-shadow-salmon { text-shadow: 6px 6px 0px #f4816e; }
-        .title-shadow-white { text-shadow: 6px 6px 0px #ffffff; }
 
         .bg-salmon { background-color: #f4816e; color: #004d40; }
         .bg-cyan { background-color: #00ffff; color: #004d40; }
@@ -154,7 +153,7 @@
         <div id="teacher-question-view" class="hidden mb-8 box-brutal bg-gray-100 p-6 flex flex-col md:flex-row gap-6">
             <div class="flex-1">
                 <h2 class="text-sm font-bold uppercase text-gray-500 mb-2">Právě se zobrazuje na projektoru:</h2>
-                <h2 id="teacher-question-text" class="text-3xl font-black mb-4 text-[#004d40] leading-tight"></h2>
+                <h2 id="teacher-question-text" class="text-3xl font-black mb-4 text-[#004d40] leading-tight break-words"></h2>
                 <div id="teacher-options" class="w-full"></div>
             </div>
             <div class="w-48 shrink-0 flex items-center justify-center border-l-4 border-dashed border-gray-300 pl-6">
@@ -166,26 +165,24 @@
             <h2 class="text-4xl font-black text-[#004d40] uppercase">Konec testu!</h2>
         </div>
 
-        <div id="teacher-leaderboard-section">
-            <h3 id="leaderboard-title" class="text-xl font-black uppercase text-[#004d40] mb-4 inline-block bg-[#00ffff] px-4 py-2 border-4 border-[#004d40]">Stav třídy:</h3>
+        <div id="teacher-leaderboard-section" class="flex flex-col">
+            <h3 id="leaderboard-title" class="text-xl font-black uppercase text-[#004d40] mb-4 inline-block bg-[#00ffff] px-4 py-2 border-4 border-[#004d40] self-start">Stav třídy:</h3>
             
-            <!-- NOVÁ SEKC: ŽIVÁ ANALYTIKA (PROGRESS BAR A BREAKDOWN) -->
-            <div id="teacher-analytics" class="hidden mb-8 w-full max-w-4xl bg-gray-100 p-6 box-brutal">
-                <h4 class="text-lg font-black uppercase text-[#004d40] mb-4">Živá statistika odpovědí:</h4>
+            <!-- Kartičky studentů nahoře -->
+            <div id="leaderboard" class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-4 mb-8"></div>
+            
+            <!-- Analytika přesunuta POD kartičky studentů -->
+            <div id="teacher-analytics" class="hidden w-full bg-gray-100 p-6 box-brutal mb-8">
+                <h4 class="text-xl font-black uppercase text-[#004d40] mb-4">Živá statistika odpovědí:</h4>
                 
-                <!-- Progress bar (Správně / Špatně / Čas) -->
                 <div id="analytics-bar" class="w-full h-10 flex border-4 border-[#004d40] mb-6 bg-white overflow-hidden">
                     <!-- Plní se dynamicky z JS -->
                 </div>
                 
-                <!-- Rozpad odpovědí podle typu otázky -->
                 <div id="analytics-breakdown" class="w-full">
                     <!-- Plní se dynamicky z JS -->
                 </div>
             </div>
-
-            <!-- Kartičky studentů -->
-            <div id="leaderboard" class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-4"></div>
         </div>
     </div>
 
@@ -214,7 +211,7 @@
         </div>
     </div>
 
-    <!-- 6. OBRAZOVKA: PROJEKTOR (AUTO-ŠKÁLOVACÍ) -->
+    <!-- 6. OBRAZOVKA: PROJEKTOR (STABILNÍ S OSEKÁVÁNÍM TEXTU) -->
     <div id="view-projector" class="hidden fixed inset-0 z-50 flex-col w-full h-full overflow-hidden bg-white" style="background-image: radial-gradient(#004d40 1px, transparent 1px); background-size: 40px 40px;">
         
         <div id="proj-lobby" class="flex flex-col items-center justify-center h-full space-y-12 overflow-hidden px-8">
@@ -231,18 +228,15 @@
             <p class="text-3xl md:text-4xl font-black text-[#004d40] mt-12 animate-pulse shrink-0">Čekáme na spuštění testu učitelem...</p>
         </div>
 
-        <div id="proj-game" class="hidden flex-col items-center justify-between h-full p-4 lg:p-8 w-full max-w-[100rem] mx-auto overflow-hidden">
-            <div id="proj-question-container" class="w-full flex items-center justify-center shrink-0">
-                <h2 id="proj-question-text" class="font-black text-[#004d40] leading-tight text-center w-full break-words m-0"></h2>
-            </div>
+        <!-- OŠETŘENO PROTI PŘETEČENÍ: line-clamp a min-h-0 -->
+        <div id="proj-game" class="hidden flex-col items-center justify-between h-full p-4 lg:p-8 w-full max-w-[90rem] mx-auto overflow-hidden">
+            <h2 id="proj-question-text" class="font-black text-[#004d40] leading-tight text-center shrink-0 w-full mt-2 text-[clamp(1.8rem,5vh,4.5rem)] overflow-hidden line-clamp-3"></h2>
             
             <div id="proj-image-wrapper" class="flex-1 min-h-0 w-full flex items-center justify-center my-4 hidden">
                 <img id="proj-question-image" src="" class="max-h-full max-w-full border-8 border-[#004d40] box-shadow-brutal object-contain">
             </div>
             
-            <div id="proj-options-container" class="w-full shrink-0">
-                <div id="proj-options" class="w-full h-full"></div>
-            </div>
+            <div id="proj-options" class="w-full flex-1 min-h-0 flex flex-col justify-end mb-4 lg:mb-8"></div>
         </div>
 
         <div id="proj-end" class="hidden flex-col items-center justify-start h-full p-8 md:p-16 w-full max-w-[90rem] mx-auto overflow-y-auto">
@@ -290,33 +284,6 @@
             Object.values(views).forEach(v => v.classList.add('hidden'));
             views[viewName].classList.remove('hidden');
         }
-
-        window.resizeProjectorText = function() {
-            if(document.getElementById('view-projector').classList.contains('hidden')) return;
-
-            const qContainer = document.getElementById('proj-question-container');
-            const qText = document.getElementById('proj-question-text');
-            if(qText && qContainer && qText.innerText !== "") {
-                let size = 90; 
-                qText.style.fontSize = size + 'px';
-                while (qText.scrollHeight > qContainer.clientHeight && size > 20) {
-                    size -= 2;
-                    qText.style.fontSize = size + 'px';
-                }
-            }
-
-            const optSpans = document.querySelectorAll('.proj-opt-text-span');
-            optSpans.forEach(span => {
-                let size = 60; 
-                span.style.fontSize = size + 'px';
-                const container = span.parentElement;
-                while (span.scrollHeight > container.clientHeight && size > 16) {
-                    size -= 2;
-                    span.style.fontSize = size + 'px';
-                }
-            });
-        };
-        window.addEventListener('resize', window.resizeProjectorText);
 
         const urlParams = new URLSearchParams(window.location.search);
         
@@ -456,7 +423,7 @@
                 let answeredCount = 0;
                 let studentsArray = [];
                 
-                // OBJEKT PRO DRŽENÍ STATISTIK PRO BARGRAF
+                // STATISTIKA PRO ANALYTIKU
                 let stats = { correct: 0, incorrect: 0, timeout: 0, answers: {} };
                 
                 snapshot.forEach(docSnap => { studentsArray.push(docSnap.data()); });
@@ -526,7 +493,7 @@
                 document.getElementById('total-count').innerText = count;
                 document.getElementById('answered-count').innerText = answeredCount;
 
-                // VYKRESLENÍ ŽIVÉ ANALYTIKY
+                // VYKRESLENÍ ŽIVÉ ANALYTIKY (Pod studenty)
                 const analyticsSection = document.getElementById('teacher-analytics');
                 if (currentRoomState === 'playing' && answeredCount > 0) {
                     analyticsSection.classList.remove('hidden');
@@ -716,7 +683,7 @@
         }
 
 
-        // --- LOGIKA PROJEKTORU ---
+        // --- LOGIKA PROJEKTORU (STABILNÍ CSS ZAROVNÁNÍ) ---
         function setupProjectorMode() {
             showView('projector');
             document.getElementById('proj-pin-display').innerText = roomPin;
@@ -740,8 +707,7 @@
                     document.getElementById('proj-game').classList.replace('hidden', 'flex');
                     document.getElementById('proj-end').classList.add('hidden');
 
-                    const qContainer = document.getElementById('proj-question-container');
-                    const oContainer = document.getElementById('proj-options-container');
+                    const gameContainer = document.getElementById('proj-game');
                     document.getElementById('proj-question-text').innerText = data.questionText;
                     
                     const imgWrapper = document.getElementById('proj-image-wrapper');
@@ -750,56 +716,42 @@
                     if(data.questionImage) {
                         imgEl.src = data.questionImage;
                         imgWrapper.classList.remove('hidden');
-                        qContainer.style.height = '20vh';
-                        oContainer.style.height = '35vh';
                     } else {
                         imgWrapper.classList.add('hidden');
-                        qContainer.style.height = '35vh';
-                        oContainer.style.height = '50vh';
                     }
 
                     const optContainer = document.getElementById('proj-options');
                     optContainer.innerHTML = '';
                     
                     if(data.questionType === 'multiple-choice') {
-                        optContainer.className = 'grid grid-cols-2 gap-4 lg:gap-6 w-full h-full';
+                        optContainer.className = 'grid grid-cols-2 gap-4 lg:gap-6 w-full mt-6 flex-1 min-h-0';
                         const colors = ['bg-[#f4816e]', 'bg-[#00ffff]', 'bg-white', 'bg-white'];
                         const labels = ['A', 'B', 'C', 'D'];
                         let opts = data.questionOptions || ["A", "B", "C", "D"];
 
                         opts.forEach((opt, i) => {
                             const d = document.createElement('div');
-                            d.className = `box-brutal p-4 lg:p-6 ${colors[i % 4]} text-[#004d40] font-black flex items-center justify-start uppercase leading-tight h-full overflow-hidden`;
+                            d.className = `box-brutal p-4 lg:p-6 ${colors[i % 4]} text-[#004d40] font-black flex items-center justify-start uppercase leading-tight min-h-0 h-full`;
                             d.innerHTML = `
-                                <div class="mr-4 lg:mr-6 font-black bg-[#004d40] text-white px-6 py-4 border-4 border-[#004d40] shrink-0 flex items-center justify-center text-6xl">
+                                <div class="mr-4 lg:mr-6 font-black bg-[#004d40] text-white px-4 py-2 border-4 border-[#004d40] shrink-0 flex items-center justify-center text-[clamp(1.5rem,4vh,3.5rem)]">
                                     ${labels[i%4]}
                                 </div> 
-                                <div class="text-left w-full h-full flex items-center overflow-hidden">
-                                    <span class="block w-full break-words proj-opt-text-span">${opt}</span>
+                                <div class="text-left overflow-hidden break-words text-[clamp(1rem,3vh,2.5rem)] line-clamp-4">
+                                    ${opt}
                                 </div>
                             `;
                             optContainer.appendChild(d);
                         });
                     } else if (data.questionType === 'true-false') {
-                         optContainer.className = 'grid grid-cols-2 gap-4 lg:gap-8 w-full h-full';
+                         optContainer.className = 'grid grid-cols-2 gap-4 lg:gap-8 w-full mt-8 flex-1 min-h-0';
                          optContainer.innerHTML = `
-                            <div class="box-brutal p-8 bg-[#00ffff] text-[#004d40] font-black flex items-center justify-center h-full">
-                                <span class="proj-opt-text-span break-words text-center w-full">PRAVDA</span>
-                            </div>
-                            <div class="box-brutal p-8 bg-[#f4816e] text-[#004d40] font-black flex items-center justify-center h-full">
-                                <span class="proj-opt-text-span break-words text-center w-full">NEPRAVDA</span>
-                            </div>
+                            <div class="box-brutal text-[clamp(2rem,6vh,5rem)] p-8 bg-[#00ffff] text-[#004d40] font-black flex items-center justify-center h-full">PRAVDA</div>
+                            <div class="box-brutal text-[clamp(2rem,6vh,5rem)] p-8 bg-[#f4816e] text-[#004d40] font-black flex items-center justify-center h-full">NEPRAVDA</div>
                          `;
                     } else if (data.questionType === 'text-input') {
-                         optContainer.className = 'w-full h-full flex items-center justify-center';
-                         optContainer.innerHTML = `
-                            <div class="box-brutal p-8 bg-white w-full h-full flex items-center justify-center text-center">
-                                <span class="proj-opt-text-span text-[#004d40] font-black uppercase animate-pulse w-full">Zadejte přesnou odpověď na svém zařízení</span>
-                            </div>
-                         `;
+                         optContainer.className = 'w-full flex items-center justify-center mt-8 flex-1 min-h-0';
+                         optContainer.innerHTML = `<div class="text-[clamp(1.5rem,4vh,3rem)] text-[#004d40] font-black uppercase animate-pulse border-b-8 border-[#f4816e] pb-6 text-center">Zadejte přesnou odpověď na svém zařízení</div>`;
                     }
-                    
-                    setTimeout(window.resizeProjectorText, 50);
                 } 
                 else if (data.state === 'finished') {
                     document.getElementById('proj-game').classList.replace('flex', 'hidden');
