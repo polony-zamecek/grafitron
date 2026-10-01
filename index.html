@@ -160,10 +160,16 @@
         </div>
 
         <div id="teacher-quiz-header" class="hidden flex justify-between items-center mb-6 box-brutal bg-[#004d40] p-4 text-white">
-            <div class="text-2xl font-black uppercase px-4 flex items-center">
-                Odpovědělo: <span id="answered-count" class="text-[#004d40] bg-[#00ffff] px-3 py-1 ml-4 border-2 border-[#00ffff]">0</span><span class="mx-2">/</span><span id="total-count">0</span>
+            <div class="flex items-center space-x-4 md:space-x-8">
+                <!-- NOVÉ POČÍTADLO U UČITELE -->
+                <div class="bg-[#00ffff] text-[#004d40] font-black px-4 py-2 text-xl border-4 border-[#00ffff] hidden sm:block shrink-0">
+                    OTÁZKA <span id="teacher-q-counter">-/-</span>
+                </div>
+                <div class="text-lg md:text-2xl font-black uppercase flex items-center">
+                    Odpovědělo: <span id="answered-count" class="text-[#004d40] bg-white px-3 py-1 mx-2 border-2 border-white">0</span><span class="mr-2">/</span><span id="total-count">0</span>
+                </div>
             </div>
-            <button id="btn-next-question" class="btn bg-white text-[#004d40] sharp px-6 py-3 text-xl transition-colors duration-200">Vyhodnotit a další ➔</button>
+            <button id="btn-next-question" class="btn bg-white text-[#004d40] sharp px-6 py-3 text-lg md:text-xl transition-colors duration-200">Vyhodnotit a další ➔</button>
         </div>
 
         <div id="teacher-question-view" class="hidden mb-8 box-brutal bg-gray-100 p-6 flex flex-col md:flex-row gap-6">
@@ -260,6 +266,14 @@
         </div>
 
         <div id="proj-game" class="hidden flex-col items-center justify-between h-full p-4 lg:p-8 w-full max-w-[90rem] mx-auto overflow-hidden">
+            
+            <!-- NOVÝ HEADER PROJEKTORU S POČÍTADLEM -->
+            <div class="w-full flex justify-between items-center shrink-0 mb-2">
+                <div class="box-brutal bg-[#00ffff] text-[#004d40] font-black text-xl lg:text-3xl px-6 py-2 border-4 border-[#004d40]">
+                    OTÁZKA <span id="proj-q-counter"></span>
+                </div>
+            </div>
+
             <h2 id="proj-question-text" class="font-black text-[#004d40] leading-tight text-center shrink-0 w-full mt-2 text-[clamp(1.8rem,5vh,4.5rem)] overflow-hidden line-clamp-3"></h2>
             
             <div id="proj-image-wrapper" class="flex-1 min-h-0 w-full flex items-center justify-center my-4 hidden">
@@ -267,6 +281,13 @@
             </div>
             
             <div id="proj-options" class="w-full flex-1 min-h-0 flex flex-col justify-end mb-4 lg:mb-8"></div>
+
+            <!-- NOVÝ ŽIVÝ BAR NA PROJEKTORU -->
+            <div id="proj-progress-container" class="w-full h-8 lg:h-12 border-4 border-[#004d40] bg-white flex shrink-0 mt-4 overflow-hidden hidden transition-all duration-300 box-brutal">
+                <div id="proj-bar-correct" class="bg-[#00ffff] h-full flex items-center justify-center font-black text-[#004d40] transition-all duration-300" style="width: 0%"></div>
+                <div id="proj-bar-incorrect" class="bg-[#f4816e] h-full flex items-center justify-center font-black text-white transition-all duration-300" style="width: 0%"></div>
+                <div id="proj-bar-timeout" class="bg-gray-400 h-full flex items-center justify-center font-black text-white transition-all duration-300" style="width: 0%"></div>
+            </div>
         </div>
 
         <div id="proj-end" class="hidden flex-col items-center justify-start h-full p-8 md:p-16 w-full max-w-[90rem] mx-auto overflow-y-auto">
@@ -301,7 +322,6 @@
         let currentRoomState = 'waiting';
         let currentRoomDataStudent = null; 
         
-        // Globální proměnné pro finální analýzy učitele
         window.allStudentsData = [];
         let gameHistoryStats = []; 
         window.latestLiveStats = null;
@@ -321,12 +341,10 @@
             views[viewName].classList.remove('hidden');
         }
 
-        // Zavírání modálu s detailem studenta
         document.getElementById('btn-close-modal').addEventListener('click', () => {
             document.getElementById('modal-student-detail').classList.add('hidden');
         });
 
-        // Tlačítko pro nový test
         document.getElementById('btn-new-test').addEventListener('click', () => {
             document.getElementById('teacher-finished-view').classList.add('hidden');
             document.getElementById('teacher-leaderboard-section').classList.remove('hidden');
@@ -342,7 +360,6 @@
             showView('teacherSetup');
         });
 
-        // Funkce pro zobrazení detailu v modálu
         window.showStudentDetail = function(sId) {
             const student = window.allStudentsData.find(s => s.id === sId);
             if(!student) return;
@@ -554,7 +571,7 @@
 
                 snapshot.forEach(docSnap => { 
                     let s = docSnap.data();
-                    s.id = docSnap.id; // Uchováme si ID pro modál
+                    s.id = docSnap.id; 
                     
                     if (currentRoomDataTeacher && currentRoomDataTeacher.immediateFeedback && s.answeredCurrent && s.isCorrect === null) {
                          const q = quizData[currentQuestionIndex];
@@ -571,11 +588,11 @@
                     studentsArray.push(s); 
                 });
 
-                window.allStudentsData = studentsArray; // Trvalé uložení pro modál a finále
+                window.allStudentsData = studentsArray; 
                 studentsArray.sort((a, b) => (b.score || 0) - (a.score || 0));
 
                 if (currentRoomState === 'finished') {
-                    return; // Pokud je konec, nevykreslujeme už živé věci
+                    return; 
                 }
 
                 studentsArray.forEach(s => {
@@ -638,7 +655,17 @@
                 document.getElementById('total-count').innerText = count;
                 document.getElementById('answered-count').innerText = answeredCount;
 
-                window.latestLiveStats = stats; // Uložení pro tlačítko "Další"
+                window.latestLiveStats = stats; 
+
+                // Zápis Live Stats do místnosti pro projektor
+                if (currentRoomState === 'playing' && answeredCount > 0) {
+                    updateDoc(doc(db, "rooms", roomPin), {
+                        liveStats: { correct: stats.correct, incorrect: stats.incorrect, timeout: stats.timeout },
+                        answeredCount: answeredCount
+                    });
+                } else if (currentRoomState === 'playing' && answeredCount === 0) {
+                    updateDoc(doc(db, "rooms", roomPin), { liveStats: null, answeredCount: 0 });
+                }
 
                 const analyticsSection = document.getElementById('teacher-analytics');
                 if (currentRoomState === 'playing' && answeredCount > 0) {
@@ -701,7 +728,6 @@
             });
         }
 
-        // VYKRESLENÍ ZÁVĚREČNÉHO ŽEBŘÍČKU A STATISTIK NA DASHBOARDU UČITELE
         function renderFinalLeaderboard() {
             const board = document.getElementById('final-leaderboard');
             board.innerHTML = "";
@@ -756,9 +782,11 @@
                 questionOptions: q.options || [],
                 questionImage: q.image || "", 
                 timeLimit: tLimit,
+                totalQuestions: quizData.length,
                 forceReset: Math.random()
             });
             showTeacherQuestion(index, type); 
+            document.getElementById('teacher-q-counter').innerText = `${index + 1}/${quizData.length}`;
         }
 
         document.getElementById('btn-start-quiz').addEventListener('click', () => {
@@ -778,14 +806,13 @@
                 
                 let isCorrect = false;
                 if (s.isCorrect !== null && s.isCorrect !== undefined) {
-                    isCorrect = s.isCorrect; // Bylo ohodnoceno live
+                    isCorrect = s.isCorrect; 
                 } else if (s.answeredCurrent && s.lastAnswer !== null && s.lastAnswer !== undefined) {
                     isCorrect = checkAnswerIsCorrect(s.lastAnswer, type, quizData[index]);
                 }
 
                 let updates = { answeredCurrent: false, lastAnswer: null, isCorrect: null };
                 
-                // BEZPEČNÝ ZÁPIS HISTORIE: Stáhneme stávající mapu, upravíme a pošleme zpět
                 let histObj = s.history || {};
                 histObj[index] = {
                     isCorrect: isCorrect,
@@ -793,7 +820,6 @@
                 };
                 updates.history = histObj;
 
-                // Bodování (pouze pokud už nebylo obodováno live)
                 if (isCorrect && (s.isCorrect === null || s.isCorrect === undefined)) {
                     updates.score = (s.score || 0) + 100;
                 }
@@ -805,7 +831,6 @@
         }
 
         document.getElementById('btn-next-question').addEventListener('click', async () => {
-            // Uložení aktuální statistiky otázky do historie před smazáním
             if (quizData[currentQuestionIndex]) {
                 gameHistoryStats[currentQuestionIndex] = {
                     text: quizData[currentQuestionIndex].text,
@@ -838,7 +863,6 @@
                 
                 document.getElementById('teacher-finished-view').classList.remove('hidden');
                 
-                // Vykreslení finálních bloků - NYNÍ UŽ ZDE NIKDY NEBUDE PRÁZDNO
                 renderFinalLeaderboard(); 
                 renderFinalQuestionStats();
             }
@@ -912,6 +936,30 @@
                     document.getElementById('proj-lobby').classList.add('hidden');
                     document.getElementById('proj-game').classList.replace('hidden', 'flex');
                     document.getElementById('proj-end').classList.add('hidden');
+
+                    const qCounter = document.getElementById('proj-q-counter');
+                    if (qCounter) {
+                        qCounter.innerText = `${(data.questionIndex || 0) + 1} / ${data.totalQuestions || '?'}`;
+                    }
+
+                    const pCont = document.getElementById('proj-progress-container');
+                    if (data.liveStats && data.answeredCount > 0) {
+                        pCont.classList.remove('hidden');
+                        const stats = data.liveStats;
+                        const ansCount = data.answeredCount;
+                        const c = (stats.correct / ansCount) * 100;
+                        const i = (stats.incorrect / ansCount) * 100;
+                        const t = (stats.timeout / ansCount) * 100;
+
+                        document.getElementById('proj-bar-correct').style.width = c + '%';
+                        document.getElementById('proj-bar-correct').innerText = stats.correct > 0 ? stats.correct : '';
+                        document.getElementById('proj-bar-incorrect').style.width = i + '%';
+                        document.getElementById('proj-bar-incorrect').innerText = stats.incorrect > 0 ? stats.incorrect : '';
+                        document.getElementById('proj-bar-timeout').style.width = t + '%';
+                        document.getElementById('proj-bar-timeout').innerText = stats.timeout > 0 ? stats.timeout : '';
+                    } else {
+                        pCont.classList.add('hidden');
+                    }
 
                     const gameContainer = document.getElementById('proj-game');
                     document.getElementById('proj-question-text').innerText = data.questionText;
@@ -1074,7 +1122,13 @@
                         lastReset = data.forceReset;
                         await updateDoc(doc(db, "rooms", roomPin, "students", studentId), { answeredCurrent: false, lastAnswer: null, isCorrect: null });
                         
-                        buildStudentUI(data.questionType || 'multiple-choice', data.questionText, data.questionOptions);
+                        buildStudentUI(
+                            data.questionType || 'multiple-choice', 
+                            data.questionText, 
+                            data.questionOptions, 
+                            (data.questionIndex || 0) + 1, 
+                            data.totalQuestions || '?'
+                        );
                         
                         const timeBarCont = document.getElementById('time-bar-container');
                         if (data.timeLimit && !isNaN(data.timeLimit) && data.timeLimit > 0) {
@@ -1110,15 +1164,25 @@
             });
         }
 
-        function buildStudentUI(type, qText, qOptions) {
+        function buildStudentUI(type, qText, qOptions, qIndex, qTotal) {
             const area = document.getElementById('student-input-area');
             area.innerHTML = '';
             
             let questionHtml = '';
             if (qText) {
                 questionHtml = `
-                    <div class="box-brutal bg-[#00ffff] p-6 mb-6 mt-2 border-4 border-[#004d40] text-center">
+                    <div class="box-brutal bg-[#00ffff] p-6 mb-6 mt-4 border-4 border-[#004d40] text-center relative pt-8">
+                        <div class="absolute -top-4 left-4 bg-[#f4816e] text-white px-3 py-1 font-black text-sm border-4 border-[#004d40] box-shadow-brutal">
+                            OTÁZKA ${qIndex}/${qTotal}
+                        </div>
                         <h3 class="text-2xl font-black text-[#004d40] uppercase leading-snug">${qText}</h3>
+                    </div>`;
+            } else {
+                questionHtml = `
+                    <div class="box-brutal bg-[#00ffff] p-4 mb-6 mt-4 border-4 border-[#004d40] text-center relative pt-8">
+                        <div class="absolute -top-4 left-4 bg-[#f4816e] text-white px-3 py-1 font-black text-sm border-4 border-[#004d40] box-shadow-brutal">
+                            OTÁZKA ${qIndex}/${qTotal}
+                        </div>
                     </div>`;
             }
             
