@@ -107,36 +107,73 @@
         <div id="teacher-login-error" class="text-[#f4816e] font-black text-2xl text-center h-8"></div>
     </div>
 
-    <!-- 2. OBRAZOVKA: UČITEL - VÝBĚR TESTU Z TABULKY -->
-    <div id="view-teacher-setup" class="hidden flex-1 flex-col items-center justify-center max-w-3xl mx-auto w-full h-screen">
-        <div class="box-brutal p-12 w-full flex flex-col items-center text-center">
-            <h2 class="text-5xl font-black text-[#004d40] mb-8 uppercase title-shadow-salmon">Příprava hry</h2>
-            <p id="teacher-loading" class="text-3xl mb-8 animate-pulse text-[#f4816e] font-black">Připojuji se ke Google Tabulce...</p>
+    <!-- 2. OBRAZOVKA: UČITEL - VÝBĚR TESTU Z TABULKY (NOVÝ DESIGN) -->
+    <div id="view-teacher-setup" class="hidden flex-1 flex-col items-center justify-center max-w-5xl mx-auto w-full min-h-screen py-12">
+        <h2 class="text-5xl md:text-7xl font-black text-[#004d40] mb-12 uppercase title-shadow-salmon text-center w-full">Příprava hry</h2>
+        
+        <p id="teacher-loading" class="text-3xl mb-8 animate-pulse text-[#f4816e] font-black w-full text-center">Připojuji se ke Google Tabulce...</p>
+        
+        <div id="teacher-setup-form" class="hidden w-full flex flex-col space-y-12">
             
-            <div id="teacher-setup-form" class="hidden w-full flex flex-col space-y-8">
+            <!-- KROK 1: VÝBĚR REŽIMU -->
+            <div class="box-brutal bg-gray-100 p-8">
+                <h3 class="text-3xl font-black text-[#004d40] mb-6 uppercase border-b-8 border-[#004d40] pb-2">1. Režim hry</h3>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    
+                    <!-- AKTIVNÍ: LIVE KVÍZ -->
+                    <div id="mode-live" class="box-brutal bg-[#00ffff] p-6 border-4 border-[#004d40] cursor-pointer ring-4 ring-[#f4816e] relative">
+                        <div class="absolute top-0 right-0 bg-[#f4816e] text-white px-3 py-1 text-sm font-black uppercase border-b-4 border-l-4 border-[#004d40]">Aktivní</div>
+                        <h4 class="text-2xl font-black text-[#004d40] uppercase mb-2">Live Kvíz</h4>
+                        <p class="text-[#004d40] font-bold text-sm leading-tight">Společná hra, projektor ukazuje otázky, učitel řídí tempo hodiny.</p>
+                    </div>
+
+                    <!-- NEAKTIVNÍ: SAMOSTATNÝ TEST -->
+                    <div class="p-6 border-4 border-gray-400 bg-gray-200 opacity-60 cursor-not-allowed relative">
+                         <div class="absolute top-0 right-0 bg-gray-400 text-white px-3 py-1 text-sm font-black uppercase border-b-4 border-l-4 border-gray-500">Připravujeme</div>
+                        <h4 class="text-2xl font-black text-gray-500 uppercase mb-2">Test / Klauzura</h4>
+                        <p class="text-gray-500 font-bold text-sm leading-tight">Studenti vidí otázky na svém mobilu a pracují vlastním tempem.</p>
+                    </div>
+
+                    <!-- NEAKTIVNÍ: HODNOCENÍ KLAUZUR -->
+                    <div class="p-6 border-4 border-gray-400 bg-gray-200 opacity-60 cursor-not-allowed relative hidden lg:block">
+                         <div class="absolute top-0 right-0 bg-gray-400 text-white px-3 py-1 text-sm font-black uppercase border-b-4 border-l-4 border-gray-500">Připravujeme</div>
+                        <h4 class="text-2xl font-black text-gray-500 uppercase mb-2">Brainstorming</h4>
+                        <p class="text-gray-500 font-bold text-sm leading-tight">Hlasování, hodnocení prací, hvězdičky a živý word-cloud.</p>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- KROK 2: ZDROJ DAT -->
+            <div class="box-brutal bg-gray-100 p-8">
+                <h3 class="text-3xl font-black text-[#004d40] mb-6 uppercase border-b-8 border-[#004d40] pb-2">2. Zdroj dat</h3>
                 <div class="w-full text-left">
-                    <label class="text-2xl uppercase font-black text-[#004d40] block mb-4">Vyber test z tabulky:</label>
-                    <select id="select-test" class="w-full p-6 text-3xl sharp text-[#004d40] border-4 border-[#004d40] box-brutal uppercase font-black outline-none cursor-pointer bg-white">
+                    <label class="text-xl uppercase font-black text-[#004d40] block mb-4">Vyberte sešit (test) ze svého Google Disku:</label>
+                    <select id="select-test" class="w-full p-6 text-2xl md:text-3xl sharp text-[#004d40] border-4 border-[#004d40] box-brutal uppercase font-black outline-none cursor-pointer bg-white">
                     </select>
                 </div>
-                
+            </div>
+
+            <!-- KROK 3: PRAVIDLA -->
+            <div class="box-brutal bg-gray-100 p-8" id="setup-rules-live">
+                <h3 class="text-3xl font-black text-[#004d40] mb-6 uppercase border-b-8 border-[#004d40] pb-2">3. Pravidla (Live Kvíz)</h3>
                 <div class="flex flex-col space-y-6 w-full mt-4">
                     <div class="flex items-center justify-start space-x-6 w-full">
                         <input type="checkbox" id="require-email-auth" class="brutal-checkbox shrink-0">
-                        <label for="require-email-auth" class="text-2xl font-black text-[#004d40] uppercase cursor-pointer select-none text-left leading-tight">Vyžadovat přihlášení e-mailem (Na známky)</label>
+                        <label for="require-email-auth" class="text-xl md:text-2xl font-black text-[#004d40] uppercase cursor-pointer select-none text-left leading-tight">Vyžadovat přihlášení e-mailem (Na známky)</label>
                     </div>
                     <div class="flex items-center justify-start space-x-6 w-full">
                         <input type="checkbox" id="shuffle-questions" class="brutal-checkbox shrink-0">
-                        <label for="shuffle-questions" class="text-2xl font-black text-[#004d40] uppercase cursor-pointer select-none text-left leading-tight">Zamíchat otázky a odpovědi</label>
+                        <label for="shuffle-questions" class="text-xl md:text-2xl font-black text-[#004d40] uppercase cursor-pointer select-none text-left leading-tight">Zamíchat otázky a odpovědi</label>
                     </div>
                     <div class="flex items-center justify-start space-x-6 w-full">
                         <input type="checkbox" id="immediate-feedback" class="brutal-checkbox shrink-0">
-                        <label for="immediate-feedback" class="text-2xl font-black text-[#004d40] uppercase cursor-pointer select-none text-left leading-tight">Okamžité hodnocení (Správně/Špatně ihned po odeslání)</label>
+                        <label for="immediate-feedback" class="text-xl md:text-2xl font-black text-[#004d40] uppercase cursor-pointer select-none text-left leading-tight">Okamžité hodnocení (Správně/Špatně ihned po odeslání)</label>
                     </div>
                 </div>
-
-                <button id="btn-create-room" class="btn bg-salmon sharp text-3xl p-8 mt-8 w-full">Založit místnost</button>
             </div>
+
+            <button id="btn-create-room" class="btn bg-salmon sharp text-3xl md:text-5xl p-8 mt-4 w-full h-32 tracking-wider hover:bg-[#00ffff]">ZALOŽIT MÍSTNOST</button>
         </div>
     </div>
 
@@ -161,7 +198,6 @@
 
         <div id="teacher-quiz-header" class="hidden flex justify-between items-center mb-6 box-brutal bg-[#004d40] p-4 text-white">
             <div class="flex items-center space-x-4 md:space-x-8">
-                <!-- NOVÉ POČÍTADLO U UČITELE -->
                 <div class="bg-[#00ffff] text-[#004d40] font-black px-4 py-2 text-xl border-4 border-[#00ffff] hidden sm:block shrink-0">
                     OTÁZKA <span id="teacher-q-counter">-/-</span>
                 </div>
@@ -183,7 +219,7 @@
             </div>
         </div>
 
-        <!-- ŽIVÁ SEKCE (Skryje se po konci hry) -->
+        <!-- ŽIVÁ SEKCE -->
         <div id="teacher-leaderboard-section" class="flex flex-col">
             <h3 id="leaderboard-title" class="text-xl font-black uppercase text-[#004d40] mb-4 inline-block bg-[#00ffff] px-4 py-2 border-4 border-[#004d40] self-start">Stav třídy:</h3>
             <div id="leaderboard" class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-4 mb-8"></div>
@@ -195,7 +231,7 @@
             </div>
         </div>
 
-        <!-- FINÁLNÍ SEKCE (Zobrazí se po konci hry) -->
+        <!-- FINÁLNÍ SEKCE -->
         <div id="teacher-finished-view" class="hidden flex-col w-full mb-12 box-brutal bg-gray-100 p-8">
             <div class="bg-[#00ffff] p-8 text-center border-4 border-[#004d40] mb-8 relative">
                 <h2 class="text-4xl lg:text-6xl font-black text-[#004d40] uppercase">Konec testu!</h2>
@@ -210,7 +246,7 @@
         </div>
     </div>
 
-    <!-- MODÁL PRO DETAIL STUDENTA (Skrytý) -->
+    <!-- MODÁL PRO DETAIL STUDENTA -->
     <div id="modal-student-detail" class="hidden fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4">
         <div class="bg-white box-brutal w-full max-w-3xl max-h-[90vh] flex flex-col">
             <div class="flex justify-between items-center bg-[#00ffff] border-b-4 border-[#004d40] p-4 lg:p-6 shrink-0">
@@ -218,7 +254,6 @@
                 <button id="btn-close-modal" class="text-4xl font-black text-[#004d40] hover:text-[#f4816e] transition-colors leading-none">&times;</button>
             </div>
             <div id="modal-student-answers" class="p-4 lg:p-6 overflow-y-auto flex-1 flex flex-col space-y-3 bg-gray-50">
-                <!-- Otazky se vygeneruji sem -->
             </div>
         </div>
     </div>
@@ -248,7 +283,7 @@
         </div>
     </div>
 
-    <!-- 6. OBRAZOVKA: PROJEKTOR (STABILNÍ S OSEKÁVÁNÍM TEXTU) -->
+    <!-- 6. OBRAZOVKA: PROJEKTOR -->
     <div id="view-projector" class="hidden fixed inset-0 z-50 flex-col w-full h-full overflow-hidden bg-white" style="background-image: radial-gradient(#004d40 1px, transparent 1px); background-size: 40px 40px;">
         
         <div id="proj-lobby" class="flex flex-col items-center justify-center h-full space-y-12 overflow-hidden px-8">
@@ -265,9 +300,8 @@
             <p class="text-3xl md:text-4xl font-black text-[#004d40] mt-12 animate-pulse shrink-0">Čekáme na spuštění testu učitelem...</p>
         </div>
 
-        <div id="proj-game" class="hidden flex-col items-center justify-between h-full p-4 lg:p-8 w-full max-w-[90rem] mx-auto overflow-hidden">
+        <div id="proj-game" class="hidden flex-col items-center justify-between h-full p-4 lg:p-8 w-full max-w-[100rem] mx-auto overflow-hidden">
             
-            <!-- NOVÝ HEADER PROJEKTORU S POČÍTADLEM -->
             <div class="w-full flex justify-between items-center shrink-0 mb-2">
                 <div class="box-brutal bg-[#00ffff] text-[#004d40] font-black text-xl lg:text-3xl px-6 py-2 border-4 border-[#004d40]">
                     OTÁZKA <span id="proj-q-counter"></span>
@@ -282,7 +316,6 @@
             
             <div id="proj-options" class="w-full flex-1 min-h-0 flex flex-col justify-end mb-4 lg:mb-8"></div>
 
-            <!-- NOVÝ ŽIVÝ BAR NA PROJEKTORU -->
             <div id="proj-progress-container" class="w-full h-8 lg:h-12 border-4 border-[#004d40] bg-white flex shrink-0 mt-4 overflow-hidden hidden transition-all duration-300 box-brutal">
                 <div id="proj-bar-correct" class="bg-[#00ffff] h-full flex items-center justify-center font-black text-[#004d40] transition-all duration-300" style="width: 0%"></div>
                 <div id="proj-bar-incorrect" class="bg-[#f4816e] h-full flex items-center justify-center font-black text-white transition-all duration-300" style="width: 0%"></div>
@@ -322,6 +355,7 @@
         let currentRoomState = 'waiting';
         let currentRoomDataStudent = null; 
         
+        let selectedGameMode = 'live'; // Globální proměnná pro vybraný režim
         window.allStudentsData = [];
         let gameHistoryStats = []; 
         window.latestLiveStats = null;
@@ -340,6 +374,13 @@
             Object.values(views).forEach(v => v.classList.add('hidden'));
             views[viewName].classList.remove('hidden');
         }
+
+        window.resizeProjectorText = function() {
+            if(document.getElementById('view-projector').classList.contains('hidden')) return;
+            // Existující auto-škálovací logika z minulých verzí se volá pro jistotu, 
+            // ale my spoléháme v HTML spíš na clamp() a line-clamp. Nechávám to zde jako pojistku pro modální okna v budoucnu.
+        };
+        window.addEventListener('resize', window.resizeProjectorText);
 
         document.getElementById('btn-close-modal').addEventListener('click', () => {
             document.getElementById('modal-student-detail').classList.add('hidden');
@@ -543,6 +584,7 @@
 
             await setDoc(doc(db, "rooms", roomPin), { 
                 state: "waiting", 
+                mode: selectedGameMode, // Ukládáme vybraný režim do databáze pro budoucí funkce
                 questionIndex: 0, 
                 createdAt: new Date(),
                 requireAuth: requiresAuth,
@@ -657,7 +699,6 @@
 
                 window.latestLiveStats = stats; 
 
-                // Zápis Live Stats do místnosti pro projektor
                 if (currentRoomState === 'playing' && answeredCount > 0) {
                     updateDoc(doc(db, "rooms", roomPin), {
                         liveStats: { correct: stats.correct, incorrect: stats.incorrect, timeout: stats.timeout },
