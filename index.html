@@ -78,6 +78,7 @@
         .grid-4 { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 1.5rem; }
         @media (max-width: 640px) { .grid-4 { grid-template-columns: 1fr; grid-template-rows: repeat(4, 1fr); } }
         
+        /* Skrolovací lišta pro modál */
         ::-webkit-scrollbar { width: 12px; }
         ::-webkit-scrollbar-track { background: #ffffff; border-left: 4px solid #004d40; }
         ::-webkit-scrollbar-thumb { background: #004d40; }
@@ -379,14 +380,14 @@
         window.allStudentsData = [];
         let gameHistoryStats = []; 
         window.latestLiveStats = null;
-        let currentReviewIndex = 0; // Index pro reflexi
+        let currentReviewIndex = 0; 
         
         const views = {
             role: document.getElementById('view-role'),
             teacherLogin: document.getElementById('view-teacher-login'),
             teacherSetup: document.getElementById('view-teacher-setup'),
             teacher: document.getElementById('view-teacher'),
-            teacherReview: document.getElementById('view-teacher-review'), // NOVÉ
+            teacherReview: document.getElementById('view-teacher-review'),
             studentLogin: document.getElementById('view-student'),
             studentGame: document.getElementById('view-student-game'),
             projector: document.getElementById('view-projector')
@@ -453,13 +454,12 @@
             showView('teacherSetup');
         });
 
-        // 2. RESTART SE STEJNOU TŘÍDOU A NASTAVENÍM
+        // 2. RESTART SE STEJNOU TŘÍDOU
         document.getElementById('btn-reset-test').addEventListener('click', async () => {
             const btn = document.getElementById('btn-reset-test');
             btn.innerText = "Resetuji...";
             btn.disabled = true;
 
-            // Vymažeme skóre a historii u všech studentů
             const studentsRef = collection(db, "rooms", roomPin, "students");
             const snapshot = await getDocs(studentsRef);
             const promises = [];
@@ -475,7 +475,6 @@
             });
             await Promise.all(promises);
 
-            // Vrátíme místnost do čekacího stavu
             await updateDoc(doc(db, "rooms", roomPin), { 
                 state: "waiting", 
                 questionIndex: 0,
@@ -483,7 +482,6 @@
                 answeredCount: 0
             });
 
-            // Vynulujeme lokální proměnné učitele
             currentQuestionIndex = 0;
             gameHistoryStats = [];
             window.allStudentsData = [];
@@ -491,42 +489,43 @@
             btn.innerText = "Restartovat (Stejná třída)";
             btn.disabled = false;
 
-            // Přepneme učitele zpět do lobby stávajícího testu
             document.getElementById('teacher-finished-view').classList.add('hidden');
             document.getElementById('teacher-leaderboard-section').classList.remove('hidden');
             document.getElementById('teacher-lobby-header').classList.remove('hidden');
             document.getElementById('btn-start-quiz').classList.remove('hidden');
         });
 
-        // 3. LOGIKA SPOLEČNÉ REFLEXE
+        // 3. SPOLEČNÁ REFLEXE
         document.getElementById('btn-start-review').addEventListener('click', async () => {
             currentReviewIndex = 0;
             document.getElementById('teacher-finished-view').classList.add('hidden');
             showView('teacherReview');
-            await renderReviewQuestion(currentReviewIndex);
+            await window.renderReviewQuestion(currentReviewIndex);
         });
 
         document.getElementById('btn-end-review').addEventListener('click', async () => {
             showView('teacher');
             document.getElementById('teacher-finished-view').classList.remove('hidden');
             await updateDoc(doc(db, "rooms", roomPin), { state: "finished" });
+            window.renderFinalLeaderboard();
+            window.renderFinalQuestionStats();
         });
 
         document.getElementById('btn-review-prev').addEventListener('click', async () => {
             if(currentReviewIndex > 0) {
                 currentReviewIndex--;
-                await renderReviewQuestion(currentReviewIndex);
+                await window.renderReviewQuestion(currentReviewIndex);
             }
         });
 
         document.getElementById('btn-review-next').addEventListener('click', async () => {
             if(currentReviewIndex < quizData.length - 1) {
                 currentReviewIndex++;
-                await renderReviewQuestion(currentReviewIndex);
+                await window.renderReviewQuestion(currentReviewIndex);
             }
         });
 
-        async function renderReviewQuestion(index) {
+        window.renderReviewQuestion = async function(index) {
             document.getElementById('btn-review-prev').disabled = index === 0;
             document.getElementById('btn-review-next').disabled = index === quizData.length - 1;
             document.getElementById('review-q-counter').innerText = `${index + 1}/${quizData.length}`;
@@ -579,7 +578,7 @@
                  });
             }
 
-            // Odeslání dat na projektor
+            // Odeslání dat na projektor a studentům pro reflexi
             await updateDoc(doc(db, "rooms", roomPin), {
                 state: "reviewing",
                 questionIndex: index,
@@ -591,8 +590,14 @@
                 totalQuestions: quizData.length,
                 forceReset: Math.random() 
             });
-        }
+        };
 
+        window.startReviewAt = async function(index) {
+            currentReviewIndex = index;
+            document.getElementById('teacher-finished-view').classList.add('hidden');
+            showView('teacherReview');
+            await window.renderReviewQuestion(currentReviewIndex);
+        };
 
         window.showStudentDetail = function(sId) {
             const student = window.allStudentsData.find(s => s.id === sId);
@@ -797,7 +802,7 @@
 
             onSnapshot(collection(db, "rooms", roomPin, "students"), snapshot => {
                 const board = document.getElementById('leaderboard');
-                board.innerHTML = "";
+                if(board) board.innerHTML = "";
                 let count = 0;
                 let answeredCount = 0;
                 let studentsArray = [];
@@ -809,16 +814,18 @@
                     s.id = docSnap.id; 
                     
                     if (currentRoomDataTeacher && currentRoomDataTeacher.immediateFeedback && s.answeredCurrent && s.isCorrect === null) {
+                         // Bezpečné čtení otázky
                          const q = quizData[currentQuestionIndex];
-                         const type = q.type ? q.type.trim() : 'multiple-choice';
-                         let isCorrect = false;
-                         if (s.lastAnswer !== null && s.lastAnswer !== undefined) {
-                             isCorrect = checkAnswerIsCorrect(s.lastAnswer, type, q);
+                         if (q) {
+                             const type = q.type ? q.type.trim() : 'multiple-choice';
+                             let isCorrect = false;
+                             if (s.lastAnswer !== null && s.lastAnswer !== undefined) {
+                                 isCorrect = checkAnswerIsCorrect(s.lastAnswer, type, q);
+                             }
+                             s.isCorrect = isCorrect;
+                             s.score = (s.score || 0) + (isCorrect ? 100 : 0);
+                             updateDoc(docSnap.ref, { isCorrect: isCorrect, score: s.score });
                          }
-                         s.isCorrect = isCorrect;
-                         s.score = (s.score || 0) + (isCorrect ? 100 : 0);
-                         
-                         updateDoc(docSnap.ref, { isCorrect: isCorrect, score: s.score });
                     }
                     studentsArray.push(s); 
                 });
@@ -826,8 +833,10 @@
                 window.allStudentsData = studentsArray; 
                 studentsArray.sort((a, b) => (b.score || 0) - (a.score || 0));
 
-                if (currentRoomState === 'finished' || currentRoomState === 'reviewing') {
-                    renderFinalLeaderboard();
+                // TVRDÁ POJISTKA KONCE TESTU (zamezí smazání obrazovky po skončení testu)
+                if (currentRoomState === 'finished' || currentRoomState === 'reviewing' || currentQuestionIndex >= quizData.length) {
+                    window.renderFinalLeaderboard();
+                    window.renderFinalQuestionStats();
                     return; 
                 }
 
@@ -845,18 +854,17 @@
                             stats.timeout++;
                         } else {
                             let isCorrect = false;
+                            const q = quizData[currentQuestionIndex];
                             
                             if (s.isCorrect !== undefined && s.isCorrect !== null) {
                                 isCorrect = s.isCorrect;
-                            } else {
-                                const q = quizData[currentQuestionIndex];
+                            } else if (q) {
                                 const type = q.type ? q.type.trim() : 'multiple-choice';
                                 isCorrect = checkAnswerIsCorrect(s.lastAnswer, type, q);
                             }
 
-                            if (quizData[currentQuestionIndex]) {
-                                const type = quizData[currentQuestionIndex].type ? quizData[currentQuestionIndex].type.trim() : 'multiple-choice';
-                                
+                            if (q) {
+                                const type = q.type ? q.type.trim() : 'multiple-choice';
                                 if (type === 'multiple-choice') {
                                     let sAnswerRaw = s.lastAnswer.toString().toUpperCase().trim();
                                     stats.answers[sAnswerRaw] = (stats.answers[sAnswerRaw] || 0) + 1;
@@ -884,7 +892,7 @@
                     const div = document.createElement('div');
                     div.className = `p-3 text-center font-black text-xl uppercase sharp box-brutal ${boxClass}`;
                     div.innerHTML = `${s.name}<br><span class="text-sm font-black mt-1 block ${scoreClass}">${s.score || 0} b.</span>`;
-                    board.appendChild(div);
+                    if(board) board.appendChild(div);
                 });
 
                 document.getElementById('lobby-students-count').innerText = count;
@@ -917,31 +925,34 @@
                     `;
 
                     let breakdownHTML = '';
-                    const type = quizData[currentQuestionIndex] ? (quizData[currentQuestionIndex].type || 'multiple-choice').trim() : 'multiple-choice';
-                    
-                    if (type === 'multiple-choice') {
-                        const labels = ['A', 'B', 'C', 'D'];
-                        breakdownHTML = `<div class="grid grid-cols-4 gap-4">`;
-                        labels.forEach(l => {
-                            const cnt = stats.answers[l] || 0;
-                            breakdownHTML += `<div class="box-brutal bg-white p-3 text-center text-2xl"><span class="font-black text-[#004d40]">${l}:</span> ${cnt}</div>`;
-                        });
-                        breakdownHTML += `</div>`;
-                    } else if (type === 'true-false') {
-                        breakdownHTML = `<div class="grid grid-cols-2 gap-4">`;
-                        breakdownHTML += `<div class="box-brutal bg-white p-3 text-center text-2xl font-black text-[#004d40] border-4 border-[#004d40]">PRAVDA: ${stats.answers['PRAVDA'] || 0}</div>`;
-                        breakdownHTML += `<div class="box-brutal bg-white p-3 text-center text-2xl font-black text-[#004d40] border-4 border-[#004d40]">NEPRAVDA: ${stats.answers['NEPRAVDA'] || 0}</div>`;
-                        breakdownHTML += `</div>`;
-                    } else if (type === 'text-input') {
-                        const uniqueAnswers = Object.keys(stats.answers).filter(k => k !== 'null');
-                        breakdownHTML = `<div class="flex flex-wrap gap-3">`;
-                        if(uniqueAnswers.length === 0) breakdownHTML += `<div class="text-gray-500 italic">Zatím žádné textové odpovědi</div>`;
-                        uniqueAnswers.forEach(ans => {
-                            breakdownHTML += `<div class="box-brutal bg-white px-4 py-2 text-xl font-bold text-[#004d40]">${ans} <span class="bg-[#f4816e] text-white px-2 py-1 ml-2 text-sm">${stats.answers[ans]}x</span></div>`;
-                        });
-                        breakdownHTML += `</div>`;
-                    } else if (type === 'matching') {
-                        breakdownHTML = `<div class="box-brutal bg-white p-4 text-lg font-bold text-[#004d40]">Detailní rozpad u spojovacích otázek není podporován. Plně správných odpovědí: <span class="bg-[#00ffff] px-2 py-1 border-2 border-[#004d40] ml-2">${stats.correct}</span></div>`;
+                    const q = quizData[currentQuestionIndex];
+                    if (q) {
+                        const type = q.type ? q.type.trim() : 'multiple-choice';
+                        
+                        if (type === 'multiple-choice') {
+                            const labels = ['A', 'B', 'C', 'D'];
+                            breakdownHTML = `<div class="grid grid-cols-4 gap-4">`;
+                            labels.forEach(l => {
+                                const cnt = stats.answers[l] || 0;
+                                breakdownHTML += `<div class="box-brutal bg-white p-3 text-center text-2xl"><span class="font-black text-[#004d40]">${l}:</span> ${cnt}</div>`;
+                            });
+                            breakdownHTML += `</div>`;
+                        } else if (type === 'true-false') {
+                            breakdownHTML = `<div class="grid grid-cols-2 gap-4">`;
+                            breakdownHTML += `<div class="box-brutal bg-white p-3 text-center text-2xl font-black text-[#004d40] border-4 border-[#004d40]">PRAVDA: ${stats.answers['PRAVDA'] || 0}</div>`;
+                            breakdownHTML += `<div class="box-brutal bg-white p-3 text-center text-2xl font-black text-[#004d40] border-4 border-[#004d40]">NEPRAVDA: ${stats.answers['NEPRAVDA'] || 0}</div>`;
+                            breakdownHTML += `</div>`;
+                        } else if (type === 'text-input') {
+                            const uniqueAnswers = Object.keys(stats.answers).filter(k => k !== 'null');
+                            breakdownHTML = `<div class="flex flex-wrap gap-3">`;
+                            if(uniqueAnswers.length === 0) breakdownHTML += `<div class="text-gray-500 italic">Zatím žádné textové odpovědi</div>`;
+                            uniqueAnswers.forEach(ans => {
+                                breakdownHTML += `<div class="box-brutal bg-white px-4 py-2 text-xl font-bold text-[#004d40]">${ans} <span class="bg-[#f4816e] text-white px-2 py-1 ml-2 text-sm">${stats.answers[ans]}x</span></div>`;
+                            });
+                            breakdownHTML += `</div>`;
+                        } else if (type === 'matching') {
+                            breakdownHTML = `<div class="box-brutal bg-white p-4 text-lg font-bold text-[#004d40]">Detailní rozpad u spojovacích otázek není podporován. Plně správných odpovědí: <span class="bg-[#00ffff] px-2 py-1 border-2 border-[#004d40] ml-2">${stats.correct}</span></div>`;
+                        }
                     }
                     document.getElementById('analytics-breakdown').innerHTML = breakdownHTML;
                 } else {
@@ -962,6 +973,62 @@
                 }
             });
         }
+
+        window.renderFinalLeaderboard = function() {
+            try {
+                const board = document.getElementById('final-leaderboard');
+                if(!board) return;
+                board.innerHTML = "";
+                let finalStudents = [...(window.allStudentsData || [])];
+                finalStudents.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+                finalStudents.forEach((s, index) => {
+                    let bg = index === 0 ? 'bg-[#00ffff]' : (index <= 2 ? 'bg-[#f4816e] text-white' : 'bg-white text-[#004d40]');
+                    let textScore = index <= 2 && index > 0 ? 'text-white' : 'text-[#f4816e]';
+                    if(index === 0) textScore = 'text-[#004d40] opacity-80';
+
+                    const div = document.createElement('div');
+                    div.className = `p-3 text-center font-black text-xl uppercase sharp box-brutal ${bg} cursor-pointer hover:opacity-75 transition-opacity`;
+                    div.innerHTML = `${index + 1}. ${s.name}<br><span class="text-sm font-black mt-1 block ${textScore}">${s.score || 0} b.</span>`;
+                    div.onclick = () => { window.showStudentDetail(s.id); };
+                    board.appendChild(div);
+                });
+            } catch(e) {}
+        };
+
+        window.renderFinalQuestionStats = function() {
+            try {
+                const container = document.getElementById('final-questions-breakdown');
+                if(!container) return;
+                container.innerHTML = '';
+                gameHistoryStats.forEach((item, i) => {
+                    const total = item.stats.correct + item.stats.incorrect + item.stats.timeout;
+                    let pC = total > 0 ? (item.stats.correct / total) * 100 : 0;
+                    let pI = total > 0 ? (item.stats.incorrect / total) * 100 : 0;
+                    let pT = total > 0 ? (item.stats.timeout / total) * 100 : 0;
+
+                    const row = document.createElement('div');
+                    row.className = "box-brutal bg-white p-4 flex flex-col md:flex-row items-center justify-between gap-4 cursor-pointer border-4 border-[#004d40] hover:border-[#f4816e] hover:bg-gray-50 transition-all relative group";
+                    row.onclick = async () => {
+                        currentReviewIndex = i;
+                        document.getElementById('teacher-finished-view').classList.add('hidden');
+                        showView('teacherReview');
+                        await window.renderReviewQuestion(currentReviewIndex);
+                    };
+
+                    row.innerHTML = `
+                        <div class="absolute top-0 right-0 bg-[#ffeb3b] text-[#004d40] px-3 py-1 text-xs font-black uppercase opacity-0 group-hover:opacity-100 transition-opacity border-b-4 border-l-4 border-[#004d40]">Spustit reflexi &rarr;</div>
+                        <div class="font-bold text-lg md:text-xl text-[#004d40] flex-1 break-words pr-24">${i+1}. ${item.text}</div>
+                        <div class="w-full md:w-1/3 h-8 flex border-4 border-[#004d40] shrink-0 bg-white">
+                            <div class="bg-[#00ffff] h-full flex items-center justify-center font-black text-[#004d40]" style="width: ${pC}%">${item.stats.correct > 0 ? item.stats.correct : ''}</div>
+                            <div class="bg-[#f4816e] h-full flex items-center justify-center font-black text-white" style="width: ${pI}%">${item.stats.incorrect > 0 ? item.stats.incorrect : ''}</div>
+                            <div class="bg-gray-400 h-full flex items-center justify-center font-black text-white" style="width: ${pT}%">${item.stats.timeout > 0 ? item.stats.timeout : ''}</div>
+                        </div>
+                    `;
+                    container.appendChild(row);
+                });
+            } catch(e) {}
+        };
 
         async function triggerQuestion(index) {
             const q = quizData[index];
@@ -1057,8 +1124,8 @@
                 
                 document.getElementById('teacher-finished-view').classList.remove('hidden');
                 
-                renderFinalLeaderboard(); 
-                renderFinalQuestionStats();
+                window.renderFinalLeaderboard(); 
+                window.renderFinalQuestionStats();
             }
         });
 
@@ -1105,8 +1172,7 @@
             }
         }
 
-
-        // --- LOGIKA PROJEKTORU (ZVLÁDÁ I REFLEXI) ---
+        // --- LOGIKA PROJEKTORU ---
         function setupProjectorMode() {
             showView('projector');
             document.getElementById('proj-pin-display').innerText = roomPin;
