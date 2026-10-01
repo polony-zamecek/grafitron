@@ -331,7 +331,7 @@
             document.getElementById('teacher-finished-view').classList.add('hidden');
             document.getElementById('teacher-leaderboard-section').classList.remove('hidden');
             document.getElementById('teacher-lobby-header').classList.remove('hidden');
-            document.getElementById('btn-start-quiz').classList.add('hidden');
+            document.getElementById('btn-start-quiz').classList.remove('hidden');
             
             quizData = [];
             currentQuestionIndex = 0;
@@ -575,7 +575,6 @@
                 studentsArray.sort((a, b) => (b.score || 0) - (a.score || 0));
 
                 if (currentRoomState === 'finished') {
-                    renderFinalLeaderboard();
                     return; // Pokud je konec, nevykreslujeme už živé věci
                 }
 
@@ -786,11 +785,13 @@
 
                 let updates = { answeredCurrent: false, lastAnswer: null, isCorrect: null };
                 
-                // Zápis historie do profilu studenta
-                updates[`history.${index}`] = {
+                // BEZPEČNÝ ZÁPIS HISTORIE: Stáhneme stávající mapu, upravíme a pošleme zpět
+                let histObj = s.history || {};
+                histObj[index] = {
                     isCorrect: isCorrect,
                     rawAnswer: s.lastAnswer !== undefined ? s.lastAnswer : null
                 };
+                updates.history = histObj;
 
                 // Bodování (pouze pokud už nebylo obodováno live)
                 if (isCorrect && (s.isCorrect === null || s.isCorrect === undefined)) {
@@ -837,7 +838,8 @@
                 
                 document.getElementById('teacher-finished-view').classList.remove('hidden');
                 
-                // Vykreslení finální analytiky otázek
+                // Vykreslení finálních bloků - NYNÍ UŽ ZDE NIKDY NEBUDE PRÁZDNO
+                renderFinalLeaderboard(); 
                 renderFinalQuestionStats();
             }
         });
