@@ -77,9 +77,14 @@
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
         .grid-4 { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 1.5rem; }
         @media (max-width: 640px) { .grid-4 { grid-template-columns: 1fr; grid-template-rows: repeat(4, 1fr); } }
+        
+        /* Skrolovací lišta pro modál */
+        ::-webkit-scrollbar { width: 12px; }
+        ::-webkit-scrollbar-track { background: #ffffff; border-left: 4px solid #004d40; }
+        ::-webkit-scrollbar-thumb { background: #004d40; }
     </style>
 </head>
-<body class="flex flex-col p-4 md:p-8">
+<body class="flex flex-col p-4 md:p-8 relative">
 
     <!-- 1. OBRAZOVKA: VÝBĚR ROLE -->
     <div id="view-role" class="flex-1 flex flex-col items-center justify-center space-y-12 h-screen">
@@ -172,10 +177,7 @@
             </div>
         </div>
 
-        <div id="teacher-finished-view" class="hidden mb-8 text-center box-brutal bg-[#00ffff] p-8">
-            <h2 class="text-4xl font-black text-[#004d40] uppercase">Konec testu!</h2>
-        </div>
-
+        <!-- ŽIVÁ SEKCE (Skryje se po konci hry) -->
         <div id="teacher-leaderboard-section" class="flex flex-col">
             <h3 id="leaderboard-title" class="text-xl font-black uppercase text-[#004d40] mb-4 inline-block bg-[#00ffff] px-4 py-2 border-4 border-[#004d40] self-start">Stav třídy:</h3>
             <div id="leaderboard" class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-4 mb-8"></div>
@@ -184,6 +186,33 @@
                 <h4 class="text-xl font-black uppercase text-[#004d40] mb-4">Živá statistika odpovědí:</h4>
                 <div id="analytics-bar" class="w-full h-10 flex border-4 border-[#004d40] mb-6 bg-white overflow-hidden"></div>
                 <div id="analytics-breakdown" class="w-full"></div>
+            </div>
+        </div>
+
+        <!-- FINÁLNÍ SEKCE (Zobrazí se po konci hry) -->
+        <div id="teacher-finished-view" class="hidden flex-col w-full mb-12 box-brutal bg-gray-100 p-8">
+            <div class="bg-[#00ffff] p-8 text-center border-4 border-[#004d40] mb-8 relative">
+                <h2 class="text-4xl lg:text-6xl font-black text-[#004d40] uppercase">Konec testu!</h2>
+                <button id="btn-new-test" class="btn bg-white text-[#004d40] sharp px-8 py-4 mt-8 mx-auto text-xl hover:bg-[#f4816e] hover:text-white">Začít nový test (Zpět na přípravu)</button>
+            </div>
+
+            <h3 class="text-2xl font-black uppercase text-[#004d40] mb-4 inline-block bg-white px-4 py-2 border-4 border-[#004d40] self-start">Finální žebříček (Klikni pro detail):</h3>
+            <div id="final-leaderboard" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4 mb-12"></div>
+
+            <h3 class="text-2xl font-black uppercase text-[#004d40] mb-4 inline-block bg-white px-4 py-2 border-4 border-[#004d40] self-start">Přehled úspěšnosti otázek:</h3>
+            <div id="final-questions-breakdown" class="flex flex-col space-y-4"></div>
+        </div>
+    </div>
+
+    <!-- MODÁL PRO DETAIL STUDENTA (Skrytý) -->
+    <div id="modal-student-detail" class="hidden fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4">
+        <div class="bg-white box-brutal w-full max-w-3xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center bg-[#00ffff] border-b-4 border-[#004d40] p-4 lg:p-6 shrink-0">
+                <h3 id="modal-student-name" class="text-2xl lg:text-3xl font-black text-[#004d40] uppercase">Jméno</h3>
+                <button id="btn-close-modal" class="text-4xl font-black text-[#004d40] hover:text-[#f4816e] transition-colors leading-none">&times;</button>
+            </div>
+            <div id="modal-student-answers" class="p-4 lg:p-6 overflow-y-auto flex-1 flex flex-col space-y-3 bg-gray-50">
+                <!-- Otazky se vygeneruji sem -->
             </div>
         </div>
     </div>
@@ -272,6 +301,11 @@
         let currentRoomState = 'waiting';
         let currentRoomDataStudent = null; 
         
+        // Globální proměnné pro finální analýzy učitele
+        window.allStudentsData = [];
+        let gameHistoryStats = []; 
+        window.latestLiveStats = null;
+        
         const views = {
             role: document.getElementById('view-role'),
             teacherLogin: document.getElementById('view-teacher-login'),
@@ -287,9 +321,56 @@
             views[viewName].classList.remove('hidden');
         }
 
+        // Zavírání modálu s detailem studenta
+        document.getElementById('btn-close-modal').addEventListener('click', () => {
+            document.getElementById('modal-student-detail').classList.add('hidden');
+        });
+
+        // Tlačítko pro nový test
+        document.getElementById('btn-new-test').addEventListener('click', () => {
+            document.getElementById('teacher-finished-view').classList.add('hidden');
+            document.getElementById('teacher-leaderboard-section').classList.remove('hidden');
+            document.getElementById('teacher-lobby-header').classList.remove('hidden');
+            document.getElementById('btn-start-quiz').classList.add('hidden');
+            
+            quizData = [];
+            currentQuestionIndex = 0;
+            gameHistoryStats = [];
+            window.allStudentsData = [];
+            currentRoomState = 'waiting';
+            
+            showView('teacherSetup');
+        });
+
+        // Funkce pro zobrazení detailu v modálu
+        window.showStudentDetail = function(sId) {
+            const student = window.allStudentsData.find(s => s.id === sId);
+            if(!student) return;
+            
+            document.getElementById('modal-student-name').innerText = `${student.name} (${student.score || 0} b.)`;
+            
+            let html = '';
+            quizData.forEach((q, i) => {
+                let hist = student.history && student.history[i];
+                let isCorrect = hist ? hist.isCorrect : null;
+                
+                let bgClass = 'bg-gray-300';
+                let icon = '⏱';
+                if(isCorrect === true) { bgClass = 'bg-[#00ffff]'; icon = '✔'; }
+                else if(isCorrect === false) { bgClass = 'bg-[#f4816e] text-white'; icon = '✖'; }
+                
+                html += `
+                <div class="flex border-4 border-[#004d40] p-4 items-center justify-between ${bgClass} box-brutal">
+                    <div class="font-bold mr-4 line-clamp-2 flex-1 text-left text-lg">${i+1}. ${q.text}</div>
+                    <div class="font-black text-2xl w-10 text-center shrink-0 border-l-4 border-black/10 pl-2">${icon}</div>
+                </div>`;
+            });
+            document.getElementById('modal-student-answers').innerHTML = html;
+            document.getElementById('modal-student-detail').classList.remove('hidden');
+        };
+
         function checkAnswerIsCorrect(sAnswer, type, q) {
             if (!q) return false;
-            
             if (sAnswer === null || sAnswer === undefined) return false;
 
             if (type === 'matching') {
@@ -301,10 +382,7 @@
                 let totalPairs = Object.keys(correctMapping).length;
                 let correctCount = 0;
                 let sAnswerObj = sAnswer || {};
-                
-                for (let k in correctMapping) {
-                    if (sAnswerObj[k] === correctMapping[k]) correctCount++;
-                }
+                for (let k in correctMapping) { if (sAnswerObj[k] === correctMapping[k]) correctCount++; }
                 return (correctCount === totalPairs && totalPairs > 0);
             }
 
@@ -476,6 +554,8 @@
 
                 snapshot.forEach(docSnap => { 
                     let s = docSnap.data();
+                    s.id = docSnap.id; // Uchováme si ID pro modál
+                    
                     if (currentRoomDataTeacher && currentRoomDataTeacher.immediateFeedback && s.answeredCurrent && s.isCorrect === null) {
                          const q = quizData[currentQuestionIndex];
                          const type = q.type ? q.type.trim() : 'multiple-choice';
@@ -491,7 +571,13 @@
                     studentsArray.push(s); 
                 });
 
+                window.allStudentsData = studentsArray; // Trvalé uložení pro modál a finále
                 studentsArray.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+                if (currentRoomState === 'finished') {
+                    renderFinalLeaderboard();
+                    return; // Pokud je konec, nevykreslujeme už živé věci
+                }
 
                 studentsArray.forEach(s => {
                     count++;
@@ -552,6 +638,8 @@
                 document.getElementById('lobby-students-count').innerText = count;
                 document.getElementById('total-count').innerText = count;
                 document.getElementById('answered-count').innerText = answeredCount;
+
+                window.latestLiveStats = stats; // Uložení pro tlačítko "Další"
 
                 const analyticsSection = document.getElementById('teacher-analytics');
                 if (currentRoomState === 'playing' && answeredCount > 0) {
@@ -614,6 +702,48 @@
             });
         }
 
+        // VYKRESLENÍ ZÁVĚREČNÉHO ŽEBŘÍČKU A STATISTIK NA DASHBOARDU UČITELE
+        function renderFinalLeaderboard() {
+            const board = document.getElementById('final-leaderboard');
+            board.innerHTML = "";
+            let finalStudents = [...(window.allStudentsData || [])];
+            finalStudents.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+            finalStudents.forEach((s, index) => {
+                let bg = index === 0 ? 'bg-[#00ffff]' : (index <= 2 ? 'bg-[#f4816e] text-white' : 'bg-white text-[#004d40]');
+                let textScore = index <= 2 && index > 0 ? 'text-white' : 'text-[#f4816e]';
+                if(index === 0) textScore = 'text-[#004d40] opacity-80';
+
+                const div = document.createElement('div');
+                div.className = `p-3 text-center font-black text-xl uppercase sharp box-brutal ${bg} cursor-pointer hover:opacity-75 transition-opacity`;
+                div.innerHTML = `${index + 1}. ${s.name}<br><span class="text-sm font-black mt-1 block ${textScore}">${s.score || 0} b.</span>`;
+                div.onclick = () => { window.showStudentDetail(s.id); };
+                board.appendChild(div);
+            });
+        }
+
+        function renderFinalQuestionStats() {
+            const container = document.getElementById('final-questions-breakdown');
+            container.innerHTML = '';
+            gameHistoryStats.forEach((item, i) => {
+                const total = item.stats.correct + item.stats.incorrect + item.stats.timeout;
+                let pC = total > 0 ? (item.stats.correct / total) * 100 : 0;
+                let pI = total > 0 ? (item.stats.incorrect / total) * 100 : 0;
+                let pT = total > 0 ? (item.stats.timeout / total) * 100 : 0;
+
+                container.innerHTML += `
+                <div class="box-brutal bg-white p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div class="font-bold text-lg md:text-xl text-[#004d40] flex-1 line-clamp-2">${i+1}. ${item.text}</div>
+                    <div class="w-full md:w-1/3 h-8 flex border-4 border-[#004d40] shrink-0 bg-white">
+                        <div class="bg-[#00ffff] h-full flex items-center justify-center font-black text-[#004d40]" style="width: ${pC}%">${item.stats.correct > 0 ? item.stats.correct : ''}</div>
+                        <div class="bg-[#f4816e] h-full flex items-center justify-center font-black text-white" style="width: ${pI}%">${item.stats.incorrect > 0 ? item.stats.incorrect : ''}</div>
+                        <div class="bg-gray-400 h-full flex items-center justify-center font-black text-white" style="width: ${pT}%">${item.stats.timeout > 0 ? item.stats.timeout : ''}</div>
+                    </div>
+                </div>
+                `;
+            });
+        }
+
         async function triggerQuestion(index) {
             const q = quizData[index];
             const type = q.type ? q.type.trim() : 'multiple-choice';
@@ -647,18 +777,23 @@
             snapshot.forEach((docSnap) => {
                 const s = docSnap.data();
                 
-                if (s.isCorrect !== null && s.isCorrect !== undefined) {
-                    promises.push(updateDoc(docSnap.ref, { answeredCurrent: false, lastAnswer: null, isCorrect: null }));
-                    return;
-                }
-
                 let isCorrect = false;
-                if (s.answeredCurrent && s.lastAnswer !== null && s.lastAnswer !== undefined) {
+                if (s.isCorrect !== null && s.isCorrect !== undefined) {
+                    isCorrect = s.isCorrect; // Bylo ohodnoceno live
+                } else if (s.answeredCurrent && s.lastAnswer !== null && s.lastAnswer !== undefined) {
                     isCorrect = checkAnswerIsCorrect(s.lastAnswer, type, quizData[index]);
                 }
 
                 let updates = { answeredCurrent: false, lastAnswer: null, isCorrect: null };
-                if (isCorrect) {
+                
+                // Zápis historie do profilu studenta
+                updates[`history.${index}`] = {
+                    isCorrect: isCorrect,
+                    rawAnswer: s.lastAnswer !== undefined ? s.lastAnswer : null
+                };
+
+                // Bodování (pouze pokud už nebylo obodováno live)
+                if (isCorrect && (s.isCorrect === null || s.isCorrect === undefined)) {
                     updates.score = (s.score || 0) + 100;
                 }
                 
@@ -669,6 +804,14 @@
         }
 
         document.getElementById('btn-next-question').addEventListener('click', async () => {
+            // Uložení aktuální statistiky otázky do historie před smazáním
+            if (quizData[currentQuestionIndex]) {
+                gameHistoryStats[currentQuestionIndex] = {
+                    text: quizData[currentQuestionIndex].text,
+                    stats: window.latestLiveStats || { correct: 0, incorrect: 0, timeout: 0, answers: {} }
+                };
+            }
+
             const btn = document.getElementById('btn-next-question');
             btn.classList.remove('bg-salmon', 'text-white', 'animate-pulse');
             btn.classList.add('bg-white', 'text-[#004d40]');
@@ -686,11 +829,16 @@
                 triggerQuestion(currentQuestionIndex);
             } else {
                 await updateDoc(doc(db, "rooms", roomPin), { state: "finished" });
+                
                 document.getElementById('teacher-quiz-header').classList.add('hidden');
                 document.getElementById('teacher-question-view').classList.add('hidden');
                 document.getElementById('teacher-analytics').classList.add('hidden');
+                document.getElementById('teacher-leaderboard-section').classList.add('hidden');
+                
                 document.getElementById('teacher-finished-view').classList.remove('hidden');
-                document.getElementById('leaderboard-title').innerText = "Finální žebříček:";
+                
+                // Vykreslení finální analytiky otázek
+                renderFinalQuestionStats();
             }
         });
 
@@ -862,7 +1010,6 @@
             showView('studentLogin');
         });
 
-        // 1. ZÁMEK TLAČÍTKA PŘI PŘIHLÁŠENÍ (PREVENCE DUCHŮ)
         document.getElementById('btn-join-room').addEventListener('click', async () => {
             const btn = document.getElementById('btn-join-room');
             const pin = document.getElementById('student-pin').value.trim();
@@ -883,7 +1030,6 @@
                     return err.innerText = "Místnost neexistuje!";
                 }
                 
-                // 2. PEVNÁ IDENTITA Z FIREBASE (přežije obnovení stránky)
                 const userCred = await signInAnonymously(auth);
                 roomPin = pin;
                 studentId = userCred.user.uid; 
@@ -891,7 +1037,6 @@
                 const sRef = doc(db, "rooms", roomPin, "students", studentId);
                 const sSnap = await getDoc(sRef);
 
-                // 3. OCHRANA BODOVÉHO SKÓRE (Když už existuje, jen updatujeme jméno)
                 if (!sSnap.exists()) {
                     await setDoc(sRef, { name, score: 0, answeredCurrent: false });
                 } else {
