@@ -78,7 +78,6 @@
         .grid-4 { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 1.5rem; }
         @media (max-width: 640px) { .grid-4 { grid-template-columns: 1fr; grid-template-rows: repeat(4, 1fr); } }
         
-        /* Skrolovací lišta pro modál */
         ::-webkit-scrollbar { width: 12px; }
         ::-webkit-scrollbar-track { background: #ffffff; border-left: 4px solid #004d40; }
         ::-webkit-scrollbar-thumb { background: #004d40; }
@@ -201,7 +200,8 @@
         <div id="teacher-question-view" class="hidden mb-8 box-brutal bg-gray-100 p-6 flex flex-col md:flex-row gap-6">
             <div class="flex-1">
                 <h2 class="text-sm font-bold uppercase text-gray-500 mb-2">Právě se zobrazuje na projektoru:</h2>
-                <h2 id="teacher-question-text" class="text-3xl font-black mb-4 text-[#004d40] leading-tight"></h2>
+                <!-- ODSTRANĚNO: line-clamp, přidáno break-words -->
+                <h2 id="teacher-question-text" class="text-3xl font-black mb-4 text-[#004d40] leading-tight break-words"></h2>
                 <div id="teacher-options" class="w-full"></div>
             </div>
             <div class="w-48 shrink-0 flex items-center justify-center border-l-4 border-dashed border-gray-300 pl-6">
@@ -209,7 +209,6 @@
             </div>
         </div>
 
-        <!-- ŽIVÁ SEKCE -->
         <div id="teacher-leaderboard-section" class="flex flex-col">
             <h3 id="leaderboard-title" class="text-xl font-black uppercase text-[#004d40] mb-4 inline-block bg-[#00ffff] px-4 py-2 border-4 border-[#004d40] self-start">Stav třídy:</h3>
             <div id="leaderboard" class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-4 mb-8"></div>
@@ -221,7 +220,6 @@
             </div>
         </div>
 
-        <!-- FINÁLNÍ SEKCE -->
         <div id="teacher-finished-view" class="hidden flex-col w-full mb-12 box-brutal bg-gray-100 p-8">
             <div class="bg-[#00ffff] p-8 text-center border-4 border-[#004d40] mb-8 relative">
                 <h2 class="text-4xl lg:text-6xl font-black text-[#004d40] uppercase">Konec testu!</h2>
@@ -274,7 +272,7 @@
     </div>
 
     <!-- 6. OBRAZOVKA: PROJEKTOR -->
-    <div id="view-projector" class="hidden fixed inset-0 z-50 flex-col w-full h-full overflow-hidden bg-white" style="background-image: radial-gradient(#004d40 1px, transparent 1px); background-size: 40px 40px;">
+    <div id="view-projector" class="hidden fixed inset-0 z-50 flex-col w-full h-full bg-white" style="background-image: radial-gradient(#004d40 1px, transparent 1px); background-size: 40px 40px;">
         
         <div id="proj-lobby" class="flex flex-col items-center justify-center h-full space-y-12 overflow-hidden px-8">
             <h1 class="text-5xl md:text-6xl font-black uppercase text-[#004d40] tracking-widest bg-[#00ffff] px-8 py-4 border-8 border-[#004d40] shrink-0">Připojte se do hry!</h1>
@@ -290,21 +288,23 @@
             <p class="text-3xl md:text-4xl font-black text-[#004d40] mt-12 animate-pulse shrink-0">Čekáme na spuštění testu učitelem...</p>
         </div>
 
-        <div id="proj-game" class="hidden flex-col items-center justify-between h-full p-4 lg:p-8 w-full max-w-[100rem] mx-auto overflow-hidden">
+        <!-- Zde zrušeno overflow-hidden pro případ největší nouze -->
+        <div id="proj-game" class="hidden flex-col items-center justify-between h-full p-4 lg:p-8 w-full max-w-[100rem] mx-auto overflow-y-auto">
             
-            <div class="w-full flex justify-between items-center shrink-0 mb-2">
+            <div class="w-full flex justify-between items-center shrink-0 mb-4">
                 <div class="box-brutal bg-[#00ffff] text-[#004d40] font-black text-xl lg:text-3xl px-6 py-2 border-4 border-[#004d40]">
                     OTÁZKA <span id="proj-q-counter"></span>
                 </div>
             </div>
 
-            <h2 id="proj-question-text" class="font-black text-[#004d40] leading-tight text-center shrink-0 w-full mt-2 text-[clamp(1.8rem,5vh,4.5rem)] overflow-hidden line-clamp-3"></h2>
+            <!-- ODSTRANĚNO: line-clamp. Přidáno dynamické třídění podle velikosti textu v JS -->
+            <h2 id="proj-question-text" class="font-black text-[#004d40] leading-tight text-center shrink-0 w-full mt-2 break-words"></h2>
             
             <div id="proj-image-wrapper" class="flex-1 min-h-0 w-full flex items-center justify-center my-4 hidden">
                 <img id="proj-question-image" src="" class="max-h-full max-w-full border-8 border-[#004d40] box-shadow-brutal object-contain">
             </div>
             
-            <div id="proj-options" class="w-full flex-1 min-h-0 flex flex-col justify-end mb-4 lg:mb-8"></div>
+            <div id="proj-options" class="w-full flex-1 flex flex-col justify-end mb-4 lg:mb-8"></div>
 
             <div id="proj-progress-container" class="w-full h-8 lg:h-12 border-4 border-[#004d40] bg-white flex shrink-0 mt-4 overflow-hidden hidden transition-all duration-300 box-brutal">
                 <div id="proj-bar-correct" class="bg-[#00ffff] h-full flex items-center justify-center font-black text-[#004d40] transition-all duration-300" style="width: 0%"></div>
@@ -365,11 +365,6 @@
             views[viewName].classList.remove('hidden');
         }
 
-        window.resizeProjectorText = function() {
-            if(document.getElementById('view-projector').classList.contains('hidden')) return;
-        };
-        window.addEventListener('resize', window.resizeProjectorText);
-
         document.getElementById('btn-close-modal').addEventListener('click', () => {
             document.getElementById('modal-student-detail').classList.add('hidden');
         });
@@ -407,7 +402,7 @@
                 
                 html += `
                 <div class="flex border-4 border-[#004d40] p-4 items-center justify-between ${bgClass} box-brutal">
-                    <div class="font-bold mr-4 line-clamp-2 flex-1 text-left text-lg">${i+1}. ${q.text}</div>
+                    <div class="font-bold mr-4 flex-1 text-left text-lg break-words">${i+1}. ${q.text}</div>
                     <div class="font-black text-2xl w-10 text-center shrink-0 border-l-4 border-black/10 pl-2">${icon}</div>
                 </div>`;
             });
@@ -622,7 +617,6 @@
                 studentsArray.sort((a, b) => (b.score || 0) - (a.score || 0));
 
                 if (currentRoomState === 'finished') {
-                    // Pojistka: pokud data dorazí až po ukončení testu, hned překreslíme finální žebříček
                     renderFinalLeaderboard();
                     return; 
                 }
@@ -791,7 +785,7 @@
 
                 container.innerHTML += `
                 <div class="box-brutal bg-white p-4 flex flex-col md:flex-row items-center justify-between gap-4">
-                    <div class="font-bold text-lg md:text-xl text-[#004d40] flex-1 line-clamp-2">${i+1}. ${item.text}</div>
+                    <div class="font-bold text-lg md:text-xl text-[#004d40] flex-1 break-words">${i+1}. ${item.text}</div>
                     <div class="w-full md:w-1/3 h-8 flex border-4 border-[#004d40] shrink-0 bg-white">
                         <div class="bg-[#00ffff] h-full flex items-center justify-center font-black text-[#004d40]" style="width: ${pC}%">${item.stats.correct > 0 ? item.stats.correct : ''}</div>
                         <div class="bg-[#f4816e] h-full flex items-center justify-center font-black text-white" style="width: ${pI}%">${item.stats.incorrect > 0 ? item.stats.incorrect : ''}</div>
@@ -913,7 +907,6 @@
             const optContainer = document.getElementById('teacher-options');
             optContainer.innerHTML = '';
 
-            // ODSTRANĚNÉ PODBARVOVÁNÍ ODPOVĚDÍ
             if(type === 'multiple-choice') {
                 optContainer.className = 'grid-2 w-full mt-4';
                 const labels = ['A', 'B', 'C', 'D'];
@@ -921,8 +914,8 @@
 
                 opts.forEach((opt, i) => {
                     const d = document.createElement('div');
-                    d.className = `box-brutal text-sm md:text-lg p-2 bg-white text-[#004d40] font-black flex items-center justify-start uppercase`;
-                    d.innerHTML = `<span class="mr-3 text-lg md:text-xl font-black bg-[#004d40] text-white px-2 py-1 shrink-0">${labels[i%4]}</span> <span class="text-left break-words overflow-hidden line-clamp-2">${opt}</span>`;
+                    d.className = `box-brutal text-sm md:text-lg p-2 bg-white text-[#004d40] font-black flex items-start justify-start uppercase`;
+                    d.innerHTML = `<span class="mr-3 text-lg md:text-xl font-black bg-[#004d40] text-white px-2 py-1 shrink-0 mt-1">${labels[i%4]}</span> <span class="text-left break-words w-full">${opt}</span>`;
                     optContainer.appendChild(d);
                 });
             } else if (type === 'true-false') {
@@ -995,6 +988,10 @@
                     }
 
                     const gameContainer = document.getElementById('proj-game');
+                    
+                    const qLen = data.questionText ? data.questionText.length : 0;
+                    const qSizeClass = qLen < 60 ? 'text-[clamp(2rem,6vh,5rem)]' : (qLen < 150 ? 'text-[clamp(1.5rem,5vh,3.5rem)]' : 'text-[clamp(1.2rem,3vh,2.5rem)]');
+                    document.getElementById('proj-question-text').className = `font-black text-[#004d40] leading-tight text-center shrink-0 w-full mt-2 ${qSizeClass} break-words`;
                     document.getElementById('proj-question-text').innerText = data.questionText;
                     
                     const imgWrapper = document.getElementById('proj-image-wrapper');
@@ -1010,7 +1007,6 @@
                     const optContainer = document.getElementById('proj-options');
                     optContainer.innerHTML = '';
                     
-                    // ODSTRANĚNÉ PODBARVOVÁNÍ ODPOVĚDÍ
                     if(data.questionType === 'multiple-choice') {
                         optContainer.className = 'grid grid-cols-2 gap-4 lg:gap-6 w-full mt-6 flex-1 min-h-0';
                         const labels = ['A', 'B', 'C', 'D'];
@@ -1018,12 +1014,15 @@
 
                         opts.forEach((opt, i) => {
                             const d = document.createElement('div');
-                            d.className = `box-brutal p-4 lg:p-6 bg-white text-[#004d40] font-black flex items-center justify-start uppercase leading-tight min-h-0 h-full`;
+                            const oLen = opt.length;
+                            const oSizeClass = oLen < 40 ? 'text-[clamp(1.5rem,4vh,3.5rem)]' : (oLen < 100 ? 'text-[clamp(1.2rem,3vh,2.5rem)]' : 'text-[clamp(0.9rem,2.2vh,1.8rem)]');
+
+                            d.className = `box-brutal p-4 lg:p-6 bg-white text-[#004d40] font-black flex items-start justify-start uppercase leading-tight h-full`;
                             d.innerHTML = `
-                                <div class="mr-4 lg:mr-6 font-black bg-[#004d40] text-white px-4 py-2 border-4 border-[#004d40] shrink-0 flex items-center justify-center text-[clamp(1.5rem,4vh,3.5rem)]">
+                                <div class="mr-4 lg:mr-6 font-black bg-[#004d40] text-white px-4 py-2 border-4 border-[#004d40] shrink-0 flex items-center justify-center text-[clamp(1.2rem,3vh,2.5rem)] mt-1">
                                     ${labels[i%4]}
                                 </div> 
-                                <div class="text-left overflow-hidden break-words text-[clamp(1rem,3vh,2.5rem)] line-clamp-4">
+                                <div class="text-left break-words w-full ${oSizeClass}">
                                     ${opt}
                                 </div>
                             `;
@@ -1051,11 +1050,11 @@
                          rItems.sort(() => Math.random() - 0.5);
 
                          let lCol = '<div class="flex flex-col space-y-4 w-full h-full justify-center">';
-                         lItems.forEach(i => lCol += `<div class="box-brutal bg-white p-4 text-[clamp(1rem,2.5vh,2rem)] text-[#004d40] font-black border-4 border-[#004d40] text-center">${i}</div>`);
+                         lItems.forEach(i => lCol += `<div class="box-brutal bg-white p-4 text-[clamp(1rem,2.5vh,2rem)] text-[#004d40] font-black border-4 border-[#004d40] text-center break-words">${i}</div>`);
                          lCol += '</div>';
 
                          let rCol = '<div class="flex flex-col space-y-4 w-full h-full justify-center">';
-                         rItems.forEach(i => rCol += `<div class="box-brutal bg-white p-4 text-[clamp(1rem,2.5vh,2rem)] text-[#004d40] font-black border-4 border-[#004d40] text-center">${i}</div>`);
+                         rItems.forEach(i => rCol += `<div class="box-brutal bg-white p-4 text-[clamp(1rem,2.5vh,2rem)] text-[#004d40] font-black border-4 border-[#004d40] text-center break-words">${i}</div>`);
                          rCol += '</div>';
 
                          optContainer.innerHTML = lCol + rCol;
@@ -1219,7 +1218,6 @@
                     </div>`;
             }
             
-            // ODSTRANĚNÉ PODBARVOVÁNÍ ODPOVĚDÍ
             if(type === 'multiple-choice') {
                 area.className = 'flex flex-col space-y-4 w-full h-auto pb-4';
                 area.innerHTML = questionHtml;
@@ -1232,9 +1230,9 @@
                 
                 for(let i=0; i<4; i++) {
                     const btn = document.createElement('button');
-                    btn.className = `btn sharp text-xl md:text-3xl p-4 md:p-6 bg-white hover:bg-gray-100 text-[#004d40] font-black flex flex-row items-center justify-start text-left`;
+                    btn.className = `btn sharp text-xl md:text-3xl p-4 md:p-6 bg-white hover:bg-gray-100 text-[#004d40] font-black flex flex-row items-start justify-start text-left`;
                     const optText = opts[i] || labels[i];
-                    btn.innerHTML = `<span class="mr-4 text-3xl font-black bg-[#004d40] text-white px-4 py-2 border-4 border-[#004d40] shrink-0">${labels[i]}</span> <span class="text-left break-words">${optText}</span>`;
+                    btn.innerHTML = `<span class="mr-4 text-3xl font-black bg-[#004d40] text-white px-4 py-2 border-4 border-[#004d40] shrink-0 mt-1">${labels[i]}</span> <span class="text-left break-words w-full">${optText}</span>`;
                     btn.onclick = () => submitAnswer(labels[i]);
                     btnContainer.appendChild(btn);
                 }
