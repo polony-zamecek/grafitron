@@ -78,6 +78,7 @@
         .grid-4 { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 1.5rem; }
         @media (max-width: 640px) { .grid-4 { grid-template-columns: 1fr; grid-template-rows: repeat(4, 1fr); } }
         
+        /* Skrolovací lišta pro modál */
         ::-webkit-scrollbar { width: 12px; }
         ::-webkit-scrollbar-track { background: #ffffff; border-left: 4px solid #004d40; }
         ::-webkit-scrollbar-thumb { background: #004d40; }
@@ -200,7 +201,6 @@
         <div id="teacher-question-view" class="hidden mb-8 box-brutal bg-gray-100 p-6 flex flex-col md:flex-row gap-6">
             <div class="flex-1">
                 <h2 class="text-sm font-bold uppercase text-gray-500 mb-2">Právě se zobrazuje na projektoru:</h2>
-                <!-- Bez krácení obsahu -->
                 <h2 id="teacher-question-text" class="text-3xl font-black mb-4 text-[#004d40] leading-tight break-words"></h2>
                 <div id="teacher-options" class="w-full"></div>
             </div>
@@ -273,8 +273,8 @@
         </div>
     </div>
 
-    <!-- 6. OBRAZOVKA: PROJEKTOR (PŘESTAVĚNÁ PRO LEPŠÍ AUTO-ŠKÁLOVÁNÍ) -->
-    <div id="view-projector" class="hidden fixed inset-0 z-50 flex-col w-full h-full overflow-hidden bg-white" style="background-image: radial-gradient(#004d40 1px, transparent 1px); background-size: 40px 40px;">
+    <!-- 6. OBRAZOVKA: PROJEKTOR (PŘESTAVĚNÁ PRO CHYTRÉ AUTO-ŠKÁLOVÁNÍ) -->
+    <div id="view-projector" class="hidden fixed inset-0 z-50 flex-col w-full h-full bg-white" style="background-image: radial-gradient(#004d40 1px, transparent 1px); background-size: 40px 40px;">
         
         <div id="proj-lobby" class="flex flex-col items-center justify-center h-full space-y-12 overflow-hidden px-8">
             <h1 class="text-5xl md:text-6xl font-black uppercase text-[#004d40] tracking-widest bg-[#00ffff] px-8 py-4 border-8 border-[#004d40] shrink-0">Připojte se do hry!</h1>
@@ -298,17 +298,16 @@
                 </div>
             </div>
 
-            <!-- Dynamicky dělený horní blok pro Otázku a Fotku (vedle sebe) -->
-            <div id="proj-top-section" class="w-full flex flex-col md:flex-row items-center justify-center shrink-0 gap-6 lg:gap-10 mb-4 lg:mb-8 min-h-[15vh] max-h-[35vh]">
+            <!-- Fixní výškový limit pro kontejner s otázkou (30vh), aby uvolnil místo odpovědím -->
+            <div id="proj-top-section" class="w-full flex flex-col md:flex-row items-center justify-center shrink-0 gap-6 lg:gap-10 mb-4 lg:mb-8 min-h-[15vh] max-h-[30vh]">
                 <div id="proj-q-text-container" class="w-full h-full flex flex-col justify-center overflow-hidden">
                     <h2 id="proj-question-text" class="font-black text-[#004d40] leading-tight break-words m-0 text-center w-full"></h2>
                 </div>
                 <div id="proj-image-wrapper" class="w-full md:w-1/2 h-full hidden flex items-center justify-center">
-                    <img id="proj-question-image" src="" class="max-h-[35vh] max-w-full border-8 border-[#004d40] box-shadow-brutal object-contain">
+                    <img id="proj-question-image" src="" class="max-h-[30vh] max-w-full border-8 border-[#004d40] box-shadow-brutal object-contain">
                 </div>
             </div>
             
-            <!-- Kontejner pro možnosti (Nyní má fixní flex rozvržení, aby bylo z čeho počítat zmenšení) -->
             <div id="proj-options" class="w-full flex-1 flex flex-col justify-end min-h-0"></div>
 
             <div id="proj-progress-container" class="w-full h-8 lg:h-12 border-4 border-[#004d40] bg-white flex shrink-0 mt-4 lg:mt-8 overflow-hidden hidden transition-all duration-300 box-brutal">
@@ -370,15 +369,15 @@
             views[viewName].classList.remove('hidden');
         }
 
-        // JS ALGORITMUS PRO AUTO-ŠKÁLOVÁNÍ TEXTŮ NA PROJEKTORU (VÝŠKA I ŠÍŘKA)
+        // CHYTRÝ VÝPOČET VELIKOSTI PÍSMA
         window.resizeProjectorText = function() {
             if(document.getElementById('view-projector').classList.contains('hidden')) return;
 
-            // 1. Zmenšení textu samotné otázky
+            // 1. Zastropování a zmenšování otázky
             const qContainer = document.getElementById('proj-q-text-container');
             const qText = document.getElementById('proj-question-text');
             if (qText && qContainer && qText.innerText.trim() !== '') {
-                let qSize = 80;
+                let qSize = 64; // Tvrdý stop pro otázku (přibližně 4rem)
                 qText.style.fontSize = qSize + 'px';
                 while ((qText.scrollHeight > qContainer.clientHeight || qText.scrollWidth > qContainer.clientWidth) && qSize > 24) {
                     qSize -= 2;
@@ -386,21 +385,20 @@
                 }
             }
 
-            // 2. Uniformní zmenšení všech tlačítek s odpověďmi najednou (aby všechny A, B, C, D měly stejný font)
+            // 2. Uniformní zmenšování všech odpovědí najednou
             const optionContainers = document.querySelectorAll('.proj-opt-container');
             const optionSpans = document.querySelectorAll('.proj-opt-text-span');
             if (optionSpans.length > 0 && optionContainers.length > 0) {
-                let optSize = 70; // Začneme na velkém písmu
+                let optSize = 120; // Zvýšený strop pro ultrakrátké odpovědi
                 let fits = false;
-                while (!fits && optSize > 16) { // Zmenšujeme po dvou pixelech až na 16px
+                while (!fits && optSize > 16) {
                     optionSpans.forEach(span => span.style.fontSize = optSize + 'px');
                     fits = true;
-                    // Projdeme všechny odpovědi, jestli náhodou alespoň jedna nepřetéká z krabice
+                    // Testujeme, jestli kterákoliv z možností nepřetéká z boxu
                     for (let i = 0; i < optionSpans.length; i++) {
                         const span = optionSpans[i];
                         const container = optionContainers[i];
-                        // Tolerance 4px pro bezpečné renderování
-                        if (span.scrollHeight > container.clientHeight - 4 || span.scrollWidth > container.clientWidth - 4) {
+                        if (span.scrollHeight > container.clientHeight - 8 || span.scrollWidth > container.clientWidth - 8) {
                             fits = false;
                             break;
                         }
@@ -953,6 +951,7 @@
             const optContainer = document.getElementById('teacher-options');
             optContainer.innerHTML = '';
 
+            // ODSTRANĚNÉ PODBARVOVÁNÍ ODPOVĚDÍ
             if(type === 'multiple-choice') {
                 optContainer.className = 'grid-2 w-full mt-4';
                 const labels = ['A', 'B', 'C', 'D'];
@@ -1075,7 +1074,7 @@
                             const d = document.createElement('div');
                             d.className = `box-brutal p-4 lg:p-6 bg-white text-[#004d40] font-black flex items-start justify-start uppercase leading-tight min-h-0 h-full overflow-hidden`;
                             d.innerHTML = `
-                                <div class="mr-4 lg:mr-6 font-black bg-[#004d40] text-white px-4 py-2 border-4 border-[#004d40] shrink-0 flex items-center justify-center text-4xl lg:text-5xl mt-1">
+                                <div class="mr-4 lg:mr-6 font-black bg-[#004d40] text-white px-4 py-2 border-4 border-[#004d40] shrink-0 flex items-center justify-center mt-1 text-3xl">
                                     ${labels[i%4]}
                                 </div> 
                                 <div class="proj-opt-container text-left flex-1 h-full w-full flex items-center overflow-hidden">
@@ -1097,7 +1096,7 @@
                     } else if (data.questionType === 'text-input') {
                          optContainer.className = 'w-full flex items-center justify-center mt-4 flex-1 min-h-0';
                          optContainer.innerHTML = `
-                            <div class="proj-opt-container box-brutal p-8 bg-white w-full h-full flex items-center justify-center text-center overflow-hidden">
+                            <div class="proj-opt-container box-brutal p-8 bg-white w-full h-full flex items-center justify-center text-center overflow-hidden border-4 border-[#004d40]">
                                 <span class="proj-opt-text-span text-[#004d40] font-black uppercase animate-pulse w-full border-b-8 border-[#f4816e] pb-6">Zadejte přesnou odpověď na svém zařízení</span>
                             </div>
                          `;
