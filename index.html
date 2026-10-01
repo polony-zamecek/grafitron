@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Grafitron</title>
-    <!-- Tailwind CSS pro stylování -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Písmo Montserrat (Swiss Design) -->
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
-    <!-- Knihovna pro QR kódy -->
     <script src="https://cdn.jsdelivr.net/npm/qrcode_js@1.0.0/qrcode.min.js"></script>
 
     <style>
@@ -117,7 +114,6 @@
                         <input type="checkbox" id="shuffle-questions" class="brutal-checkbox shrink-0">
                         <label for="shuffle-questions" class="text-2xl font-black text-[#004d40] uppercase cursor-pointer select-none text-left leading-tight">Zamíchat otázky a odpovědi</label>
                     </div>
-                    <!-- NOVÝ CHECKBOX PRO OKAMŽITÉ HODNOCENÍ -->
                     <div class="flex items-center justify-start space-x-6 w-full">
                         <input type="checkbox" id="immediate-feedback" class="brutal-checkbox shrink-0">
                         <label for="immediate-feedback" class="text-2xl font-black text-[#004d40] uppercase cursor-pointer select-none text-left leading-tight">Okamžité hodnocení (Správně/Špatně ihned po odeslání)</label>
@@ -264,7 +260,7 @@
         let quizData = [], currentQuestionIndex = 0;
         let timerInterval, timeLeft = 0, timeLimit = 0;
         let currentRoomState = 'waiting';
-        let currentRoomDataStudent = null; // Uchovává globální nastavení místnosti pro studenta
+        let currentRoomDataStudent = null; 
         
         const views = {
             role: document.getElementById('view-role'),
@@ -281,13 +277,30 @@
             views[viewName].classList.remove('hidden');
         }
 
-        // GLOBÁLNÍ FUNKCE PRO KONTROLU ODPOVĚDÍ
+        // GLOBÁLNÍ FUNKCE PRO KONTROLU ODPOVĚDÍ (Podporuje i Matching)
         function checkAnswerIsCorrect(sAnswer, type, q) {
             if (!q) return false;
+            
+            if (sAnswer === null || sAnswer === undefined) return false;
+
+            if (type === 'matching') {
+                let correctMapping = {};
+                (q.options || []).forEach(opt => {
+                    let parts = opt.split('=');
+                    if(parts.length === 2) correctMapping[parts[0].trim()] = parts[1].trim();
+                });
+                let totalPairs = Object.keys(correctMapping).length;
+                let correctCount = 0;
+                let sAnswerObj = sAnswer || {};
+                
+                for (let k in correctMapping) {
+                    if (sAnswerObj[k] === correctMapping[k]) correctCount++;
+                }
+                return (correctCount === totalPairs && totalPairs > 0);
+            }
+
             const correctVal = q.correctAnswer ? q.correctAnswer.toString().toLowerCase().trim() : '';
             const accepted = q.acceptedAnswers ? q.acceptedAnswers.map(a => a.toLowerCase().trim()) : [correctVal];
-
-            if (sAnswer === null || sAnswer === undefined) return false;
 
             let sAnswerRaw = sAnswer.toString().toUpperCase().trim();
             let sAnswerLower = sAnswer.toString().toLowerCase().trim();
@@ -452,7 +465,6 @@
                 
                 let stats = { correct: 0, incorrect: 0, timeout: 0, answers: {} };
 
-                // LIVE VYHODNOCENÍ - pokud je aktivní okamžité hodnocení
                 snapshot.forEach(docSnap => { 
                     let s = docSnap.data();
                     if (currentRoomDataTeacher && currentRoomDataTeacher.immediateFeedback && s.answeredCurrent && s.isCorrect === null) {
@@ -465,7 +477,6 @@
                          s.isCorrect = isCorrect;
                          s.score = (s.score || 0) + (isCorrect ? 100 : 0);
                          
-                         // Asynchronní zápis do DB
                          updateDoc(docSnap.ref, { isCorrect: isCorrect, score: s.score });
                     }
                     studentsArray.push(s); 
@@ -488,7 +499,6 @@
                         } else {
                             let isCorrect = false;
                             
-                            // Pokud je okamžité hodnocení, data už máme spočítaná ze snapshot loopu výše
                             if (s.isCorrect !== undefined && s.isCorrect !== null) {
                                 isCorrect = s.isCorrect;
                             } else {
@@ -497,18 +507,20 @@
                                 isCorrect = checkAnswerIsCorrect(s.lastAnswer, type, q);
                             }
 
-                            // Sběr dat do statistik
                             if (quizData[currentQuestionIndex]) {
                                 const type = quizData[currentQuestionIndex].type ? quizData[currentQuestionIndex].type.trim() : 'multiple-choice';
-                                let sAnswerRaw = s.lastAnswer.toString().toUpperCase().trim();
-                                let sAnswerLower = s.lastAnswer.toString().toLowerCase().trim();
+                                
                                 if (type === 'multiple-choice') {
+                                    let sAnswerRaw = s.lastAnswer.toString().toUpperCase().trim();
                                     stats.answers[sAnswerRaw] = (stats.answers[sAnswerRaw] || 0) + 1;
                                 } else if (type === 'true-false') {
+                                    let sAnswerLower = s.lastAnswer.toString().toLowerCase().trim();
                                     let key = sAnswerLower === 'pravda' ? 'PRAVDA' : 'NEPRAVDA';
                                     stats.answers[key] = (stats.answers[key] || 0) + 1;
                                 } else if (type === 'text-input') {
                                     stats.answers[s.lastAnswer.toString().trim()] = (stats.answers[s.lastAnswer.toString().trim()] || 0) + 1;
+                                } else if (type === 'matching') {
+                                    // Pro matching neuchováváme detailní složitou strukturu
                                 }
                             }
                             
@@ -572,6 +584,8 @@
                             breakdownHTML += `<div class="box-brutal bg-white px-4 py-2 text-xl font-bold text-[#004d40]">${ans} <span class="bg-[#f4816e] text-white px-2 py-1 ml-2 text-sm">${stats.answers[ans]}x</span></div>`;
                         });
                         breakdownHTML += `</div>`;
+                    } else if (type === 'matching') {
+                        breakdownHTML = `<div class="box-brutal bg-white p-4 text-lg font-bold text-[#004d40]">Detailní rozpad u spojovacích otázek není podporován. Plně správných odpovědí: <span class="bg-[#00ffff] px-2 py-1 border-2 border-[#004d40] ml-2">${stats.correct}</span></div>`;
                     }
                     document.getElementById('analytics-breakdown').innerHTML = breakdownHTML;
                 } else {
@@ -626,7 +640,6 @@
             snapshot.forEach((docSnap) => {
                 const s = docSnap.data();
                 
-                // Pokud už byl student hodnocen live, jen zresetujeme hodnoty a nepřidáváme znovu body
                 if (s.isCorrect !== null && s.isCorrect !== undefined) {
                     promises.push(updateDoc(docSnap.ref, { answeredCurrent: false, lastAnswer: null, isCorrect: null }));
                     return;
@@ -706,11 +719,20 @@
                  `;
             } else if (type === 'text-input') {
                  optContainer.innerHTML = `<div class="text-xl text-[#004d40] font-black uppercase border-b-4 border-[#f4816e] pb-2 mt-4">Formát: Textové pole na telefonech</div>`;
+            } else if (type === 'matching') {
+                 optContainer.className = 'w-full mt-4 flex flex-col space-y-2';
+                 let rawOpts = q.options || [];
+                 rawOpts.forEach(opt => {
+                     let parts = opt.split('=');
+                     if(parts.length === 2) {
+                         optContainer.innerHTML += `<div class="box-brutal p-2 bg-[#00ffff] text-[#004d40] font-black text-sm md:text-base">${parts[0].trim()} <span class="mx-2">➔</span> ${parts[1].trim()}</div>`;
+                     }
+                 });
             }
         }
 
 
-        // --- LOGIKA PROJEKTORU ---
+        // --- LOGIKA PROJEKTORU (STABILNÍ CSS ZAROVNÁNÍ) ---
         function setupProjectorMode() {
             showView('projector');
             document.getElementById('proj-pin-display').innerText = roomPin;
@@ -778,6 +800,28 @@
                     } else if (data.questionType === 'text-input') {
                          optContainer.className = 'w-full flex items-center justify-center mt-8 flex-1 min-h-0';
                          optContainer.innerHTML = `<div class="text-[clamp(1.5rem,4vh,3rem)] text-[#004d40] font-black uppercase animate-pulse border-b-8 border-[#f4816e] pb-6 text-center">Zadejte přesnou odpověď na svém zařízení</div>`;
+                    } else if (data.questionType === 'matching') {
+                         optContainer.className = 'grid grid-cols-2 gap-4 lg:gap-8 w-full mt-8 flex-1 min-h-0';
+                         let rawOpts = data.questionOptions || [];
+                         let lItems = [], rItems = [];
+                         rawOpts.forEach(opt => {
+                             let p = opt.split('=');
+                             if(p.length===2){ lItems.push(p[0].trim()); rItems.push(p[1].trim()); }
+                         });
+                         
+                         // Zamícháme pro projektor
+                         lItems.sort(() => Math.random() - 0.5);
+                         rItems.sort(() => Math.random() - 0.5);
+
+                         let lCol = '<div class="flex flex-col space-y-4 w-full h-full justify-center">';
+                         lItems.forEach(i => lCol += `<div class="box-brutal bg-white p-4 text-[clamp(1rem,2.5vh,2rem)] text-[#004d40] font-black border-4 border-[#004d40] text-center">${i}</div>`);
+                         lCol += '</div>';
+
+                         let rCol = '<div class="flex flex-col space-y-4 w-full h-full justify-center">';
+                         rItems.forEach(i => rCol += `<div class="box-brutal bg-white p-4 text-[clamp(1rem,2.5vh,2rem)] text-[#004d40] font-black border-4 border-[#004d40] text-center">${i}</div>`);
+                         rCol += '</div>';
+
+                         optContainer.innerHTML = lCol + rCol;
                     }
                 } 
                 else if (data.state === 'finished') {
@@ -850,7 +894,6 @@
                     
                     if(data.forceReset !== lastReset) {
                         lastReset = data.forceReset;
-                        // STUDENT SI RESETUJE isCorrect na null a čeká na novou otázku
                         await updateDoc(doc(db, "rooms", roomPin, "students", studentId), { answeredCurrent: false, lastAnswer: null, isCorrect: null });
                         
                         buildStudentUI(data.questionType || 'multiple-choice', data.questionText, data.questionOptions);
@@ -871,7 +914,6 @@
                 }
             });
 
-            // STUDENT POSLOUCHÁ VLASTNÍ DOKUMENT PRO OKAMŽITÉ HODNOCENÍ Z VELÍNU UČITELE
             onSnapshot(doc(db, "rooms", roomPin, "students", studentId), snap => {
                 const sData = snap.data();
                 if(!sData) return;
@@ -945,6 +987,124 @@
                     const val = document.getElementById('text-answer').value.trim();
                     if(val) submitAnswer(val);
                 };
+            } else if (type === 'matching') {
+                area.className = 'flex flex-col w-full h-auto pb-4';
+                area.innerHTML = questionHtml;
+
+                let rawOpts = qOptions && qOptions.length > 0 ? qOptions : [];
+                let leftItems = [];
+                let rightItems = [];
+                rawOpts.forEach(opt => {
+                    let parts = opt.split('=');
+                    if(parts.length === 2) {
+                        leftItems.push(parts[0].trim());
+                        rightItems.push(parts[1].trim());
+                    }
+                });
+                
+                const shuffle = (arr) => {
+                    let a = [...arr];
+                    for (let i = a.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [a[i], a[j]] = [a[j], a[i]];
+                    }
+                    return a;
+                };
+
+                leftItems = shuffle(leftItems);
+                rightItems = shuffle(rightItems);
+
+                const matchContainer = document.createElement('div');
+                matchContainer.className = 'grid grid-cols-2 gap-2 md:gap-4 w-full mt-2 flex-1';
+
+                const colLeft = document.createElement('div');
+                colLeft.className = 'flex flex-col space-y-2 md:space-y-4';
+                
+                const colRight = document.createElement('div');
+                colRight.className = 'flex flex-col space-y-2 md:space-y-4';
+
+                matchContainer.appendChild(colLeft);
+                matchContainer.appendChild(colRight);
+                area.appendChild(matchContainer);
+
+                const btnSubmit = document.createElement('button');
+                btnSubmit.innerText = 'ODESLAT SPOJENÍ';
+                btnSubmit.disabled = true;
+                area.appendChild(btnSubmit);
+
+                let selectedSide = null;
+                let selectedText = null;
+                let currentPairs = {}; 
+                let rightToLeft = {}; 
+                let assignedColors = {}; 
+                const palette = ['bg-[#00ffff]', 'bg-[#ffeb3b]', 'bg-[#8a2be2] text-white', 'bg-[#00ff00]', 'bg-[#ff9800]', 'bg-[#e91e63] text-white'];
+                let colorIndex = 0;
+
+                function updateUIMatching() {
+                    colLeft.innerHTML = '';
+                    colRight.innerHTML = '';
+                    
+                    leftItems.forEach(l => {
+                        let btn = document.createElement('button');
+                        let isPaired = currentPairs[l] !== undefined;
+                        let isSelected = selectedSide === 'left' && selectedText === l;
+                        let colorClass = isPaired ? assignedColors[l] : 'bg-white text-[#004d40]';
+                        if(isSelected) colorClass = 'bg-[#f4816e] text-white ring-4 ring-[#f4816e]'; 
+                        
+                        btn.className = `box-brutal p-2 md:p-4 font-black text-sm md:text-base border-4 border-[#004d40] ${colorClass} break-words text-center min-h-[4rem] transition-all`;
+                        btn.innerText = l;
+                        btn.onclick = () => handleMatchClick('left', l);
+                        colLeft.appendChild(btn);
+                    });
+
+                    rightItems.forEach(r => {
+                        let btn = document.createElement('button');
+                        let isPaired = rightToLeft[r] !== undefined;
+                        let isSelected = selectedSide === 'right' && selectedText === r;
+                        let colorClass = isPaired ? assignedColors[r] : 'bg-white text-[#004d40]';
+                        if(isSelected) colorClass = 'bg-[#f4816e] text-white ring-4 ring-[#f4816e]';
+                        
+                        btn.className = `box-brutal p-2 md:p-4 font-black text-sm md:text-base border-4 border-[#004d40] ${colorClass} break-words text-center min-h-[4rem] transition-all`;
+                        btn.innerText = r;
+                        btn.onclick = () => handleMatchClick('right', r);
+                        colRight.appendChild(btn);
+                    });
+
+                    let allPaired = leftItems.length > 0 && leftItems.length === Object.keys(currentPairs).length;
+                    btnSubmit.disabled = !allPaired;
+                    btnSubmit.className = `btn sharp w-full p-4 md:p-6 text-xl md:text-2xl mt-6 ${allPaired ? 'bg-[#00ffff] text-[#004d40]' : 'bg-gray-300 text-gray-500 cursor-not-allowed border-gray-400'}`;
+                    btnSubmit.onclick = () => {
+                        if(allPaired) submitAnswer(currentPairs);
+                    };
+                }
+
+                function handleMatchClick(side, text) {
+                    if (side === 'left' && currentPairs[text]) {
+                        let r = currentPairs[text];
+                        delete currentPairs[text]; delete rightToLeft[r]; delete assignedColors[text]; delete assignedColors[r];
+                        selectedSide = null; selectedText = null; updateUIMatching(); return;
+                    }
+                    if (side === 'right' && rightToLeft[text]) {
+                        let l = rightToLeft[text];
+                        delete currentPairs[l]; delete rightToLeft[text]; delete assignedColors[l]; delete assignedColors[text];
+                        selectedSide = null; selectedText = null; updateUIMatching(); return;
+                    }
+
+                    if (!selectedSide) {
+                        selectedSide = side; selectedText = text;
+                    } else if (selectedSide === side) {
+                        selectedText = text;
+                    } else {
+                        let l = side === 'left' ? text : selectedText;
+                        let r = side === 'right' ? text : selectedText;
+                        currentPairs[l] = r; rightToLeft[r] = l;
+                        let c = palette[colorIndex % palette.length]; colorIndex++;
+                        assignedColors[l] = c; assignedColors[r] = c;
+                        selectedSide = null; selectedText = null;
+                    }
+                    updateUIMatching();
+                }
+                updateUIMatching();
             }
         }
 
@@ -965,7 +1125,6 @@
             const area = document.getElementById('student-input-area');
             area.className = 'flex items-center justify-center h-[50vh] mt-10';
             
-            // Reakce dle toho, jestli je zapnuté okamžité vyhodnocení
             if (currentRoomDataStudent && currentRoomDataStudent.immediateFeedback) {
                 if (answerVal === -1) {
                     area.innerHTML = `<div class="box-brutal bg-gray-400 p-10 text-center border-4 border-[#004d40] h-[50vh] flex flex-col justify-center"><h2 class="text-4xl md:text-5xl font-black uppercase text-white">Čas vypršel!</h2></div>`;
