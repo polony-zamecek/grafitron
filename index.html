@@ -320,22 +320,34 @@
 
         <div id="proj-game" class="hidden flex-col items-center justify-between h-full p-4 lg:p-8 w-full max-w-[100rem] mx-auto overflow-hidden">
             
-            <div class="w-full flex justify-between items-center shrink-0 mb-4 lg:mb-8">
-                <div id="proj-q-counter-box" class="box-brutal bg-[#00ffff] text-[#004d40] font-black text-xl lg:text-3xl px-6 py-2 border-4 border-[#004d40]">
-                    OTÁZKA <span id="proj-q-counter"></span>
+            <!-- NOVÁ STRUKTURA HORNÍ ČÁSTI PROJEKTORU (Zarovnání obrázku a textu) -->
+            <div id="proj-top-section" class="w-full flex-[3] flex flex-row gap-4 lg:gap-6 min-h-0 mb-4 lg:mb-8">
+                
+                <!-- Levá strana: Štítek s číslem a Text Otázky -->
+                <div id="proj-q-text-container" class="flex-1 flex flex-col justify-start overflow-hidden relative w-full">
+                    <!-- Štítek s číslem otázky -->
+                    <div class="self-start mb-4 lg:mb-8 shrink-0">
+                        <div id="proj-q-counter-box" class="box-brutal bg-[#00ffff] text-[#004d40] font-black text-xl lg:text-3xl px-6 py-2 border-4 border-[#004d40] inline-block">
+                            OTÁZKA <span id="proj-q-counter"></span>
+                        </div>
+                    </div>
+                    <!-- Text otázky (wrapper pro lepší výpočet výšky) -->
+                    <div id="proj-q-text-wrapper" class="flex-1 flex flex-col justify-center overflow-hidden w-full">
+                        <h2 id="proj-question-text" class="font-black text-[#004d40] leading-tight break-words m-0 text-left w-full"></h2>
+                    </div>
                 </div>
-            </div>
 
-            <div id="proj-top-section" class="w-full flex flex-col md:flex-row items-center justify-center shrink-0 gap-6 lg:gap-10 mb-4 lg:mb-8 min-h-[15vh] max-h-[30vh]">
-                <div id="proj-q-text-container" class="w-full h-full flex flex-col justify-center overflow-hidden">
-                    <h2 id="proj-question-text" class="font-black text-[#004d40] leading-tight break-words m-0 text-center w-full"></h2>
-                </div>
-                <div id="proj-image-wrapper" class="w-full md:w-1/2 h-full hidden flex items-center justify-center">
-                    <img id="proj-question-image" src="" class="max-h-[30vh] max-w-full border-8 border-[#004d40] box-shadow-brutal object-contain">
+                <!-- Pravá strana: Obrázek -->
+                <div id="proj-image-wrapper" class="hidden flex-1 h-full relative">
+                    <!-- Absolutní pozicování zajistí roztažení boxu do plné dostupné plochy -->
+                    <div class="absolute inset-0 p-2 lg:p-4 bg-white box-brutal border-8 border-[#004d40] flex items-center justify-center overflow-hidden">
+                        <img id="proj-question-image" src="" class="max-w-full max-h-full object-contain">
+                    </div>
                 </div>
             </div>
             
-            <div id="proj-options" class="w-full flex-1 flex flex-col justify-end min-h-0"></div>
+            <!-- SPODNÍ ČÁST (Možnosti odpovědí) -->
+            <div id="proj-options" class="w-full flex-[2] flex flex-col justify-end min-h-0 shrink-0"></div>
 
             <div id="proj-progress-container" class="w-full h-8 lg:h-12 border-4 border-[#004d40] bg-white flex shrink-0 mt-4 lg:mt-8 overflow-hidden hidden transition-all duration-300 box-brutal">
                 <div id="proj-bar-correct" class="bg-[#00ffff] h-full flex items-center justify-center font-black text-[#004d40] transition-all duration-300" style="width: 0%"></div>
@@ -402,12 +414,12 @@
             if(document.getElementById('view-projector').classList.contains('hidden')) return;
 
             // 1. Zvětšování hlavní otázky
-            const qContainer = document.getElementById('proj-q-text-container');
+            const qTextWrapper = document.getElementById('proj-q-text-wrapper');
             const qText = document.getElementById('proj-question-text');
-            if (qText && qContainer && qText.innerText.trim() !== '') {
-                let qSize = 120; // Zvýšeno z 64 na 120
+            if (qText && qTextWrapper && qText.innerText.trim() !== '') {
+                let qSize = 120; // Velmi agresivní startovní velikost
                 qText.style.fontSize = qSize + 'px';
-                while ((qText.scrollHeight > qContainer.clientHeight || qText.scrollWidth > qContainer.clientWidth) && qSize > 24) {
+                while ((qText.scrollHeight > qTextWrapper.clientHeight || qText.scrollWidth > qTextWrapper.clientWidth) && qSize > 24) {
                     qSize -= 2;
                     qText.style.fontSize = qSize + 'px';
                 }
@@ -417,7 +429,7 @@
             const optionContainers = document.querySelectorAll('.proj-opt-container');
             const optionSpans = document.querySelectorAll('.proj-opt-text-span');
             if (optionSpans.length > 0 && optionContainers.length > 0) {
-                let optSize = 120; // Startuje z obří velikosti 120px a postupně zmenšuje
+                let optSize = 120; // Extrémně velké písmo, bude se zmenšovat
                 let fits = false;
                 while (!fits && optSize > 16) {
                     optionSpans.forEach(span => span.style.fontSize = optSize + 'px');
@@ -425,7 +437,7 @@
                     for (let i = 0; i < optionSpans.length; i++) {
                         const span = optionSpans[i];
                         const container = optionContainers[i];
-                        // Zkontrolujeme, jestli se vejde na výšku i na šířku
+                        // Pokud přeteče box odpovědi na výšku nebo na šířku
                         if (span.scrollHeight > container.clientHeight || span.scrollWidth > container.clientWidth) {
                             fits = false;
                             break;
@@ -1242,19 +1254,18 @@
 
                     if(data.questionImage) {
                         imgEl.src = data.questionImage;
+                        // Odstraní hidden, přidá flex, aby se zapnul Grid systém 2 sloupců
                         imgWrapper.classList.remove('hidden');
-                        topSection.classList.remove('flex-col');
-                        topSection.classList.add('flex-row');
-                        qTextContainer.classList.add('w-1/2');
+                        imgWrapper.classList.add('flex');
                         qTextContainer.classList.remove('w-full');
+                        qTextContainer.classList.add('w-1/2');
                         qText.classList.remove('text-center');
                         qText.classList.add('text-left');
                     } else {
                         imgWrapper.classList.add('hidden');
-                        topSection.classList.remove('flex-row');
-                        topSection.classList.add('flex-col');
-                        qTextContainer.classList.add('w-full');
+                        imgWrapper.classList.remove('flex');
                         qTextContainer.classList.remove('w-1/2');
+                        qTextContainer.classList.add('w-full');
                         qText.classList.remove('text-left');
                         qText.classList.add('text-center');
                     }
@@ -1273,6 +1284,7 @@
                             let bgCol = isCorrect ? 'bg-[#00ffff]' : 'bg-white';
 
                             const d = document.createElement('div');
+                            // Zásadní je "relative", aby na něj mohla fungovat "absolute" u písmen dole
                             d.className = `box-brutal relative p-4 lg:p-6 ${bgCol} text-[#004d40] font-black flex items-center justify-center uppercase leading-tight min-h-0 h-full overflow-hidden border-8 border-[#004d40]`;
                             d.innerHTML = `
                                 <div class="absolute top-0 left-0 font-black bg-[#004d40] text-white px-5 py-2 border-r-8 border-b-8 border-[#004d40] text-3xl lg:text-5xl z-10">
@@ -1340,6 +1352,7 @@
                          optContainer.innerHTML = lCol + rCol;
                     }
 
+                    // Necháme vykreslit a pak spustíme škálování textů
                     setTimeout(window.resizeProjectorText, 50);
                     if(data.questionImage) {
                         imgEl.onload = window.resizeProjectorText;
