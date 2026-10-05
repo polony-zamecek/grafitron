@@ -401,10 +401,11 @@
         window.resizeProjectorText = function() {
             if(document.getElementById('view-projector').classList.contains('hidden')) return;
 
+            // 1. Zvětšování hlavní otázky
             const qContainer = document.getElementById('proj-q-text-container');
             const qText = document.getElementById('proj-question-text');
             if (qText && qContainer && qText.innerText.trim() !== '') {
-                let qSize = 64; 
+                let qSize = 120; // Zvýšeno z 64 na 120
                 qText.style.fontSize = qSize + 'px';
                 while ((qText.scrollHeight > qContainer.clientHeight || qText.scrollWidth > qContainer.clientWidth) && qSize > 24) {
                     qSize -= 2;
@@ -412,10 +413,11 @@
                 }
             }
 
+            // 2. Zvětšování odpovědí v krabicích
             const optionContainers = document.querySelectorAll('.proj-opt-container');
             const optionSpans = document.querySelectorAll('.proj-opt-text-span');
             if (optionSpans.length > 0 && optionContainers.length > 0) {
-                let optSize = 120; 
+                let optSize = 120; // Startuje z obří velikosti 120px a postupně zmenšuje
                 let fits = false;
                 while (!fits && optSize > 16) {
                     optionSpans.forEach(span => span.style.fontSize = optSize + 'px');
@@ -423,7 +425,8 @@
                     for (let i = 0; i < optionSpans.length; i++) {
                         const span = optionSpans[i];
                         const container = optionContainers[i];
-                        if (span.scrollHeight > container.clientHeight - 8 || span.scrollWidth > container.clientWidth - 8) {
+                        // Zkontrolujeme, jestli se vejde na výšku i na šířku
+                        if (span.scrollHeight > container.clientHeight || span.scrollWidth > container.clientWidth) {
                             fits = false;
                             break;
                         }
@@ -1270,13 +1273,13 @@
                             let bgCol = isCorrect ? 'bg-[#00ffff]' : 'bg-white';
 
                             const d = document.createElement('div');
-                            d.className = `box-brutal p-4 lg:p-6 ${bgCol} text-[#004d40] font-black flex items-start justify-start uppercase leading-tight min-h-0 h-full overflow-hidden`;
+                            d.className = `box-brutal relative p-4 lg:p-6 ${bgCol} text-[#004d40] font-black flex items-center justify-center uppercase leading-tight min-h-0 h-full overflow-hidden border-8 border-[#004d40]`;
                             d.innerHTML = `
-                                <div class="mr-4 lg:mr-6 font-black bg-[#004d40] text-white px-4 py-2 border-4 border-[#004d40] shrink-0 flex items-center justify-center text-4xl lg:text-5xl mt-1">
+                                <div class="absolute top-0 left-0 font-black bg-[#004d40] text-white px-5 py-2 border-r-8 border-b-8 border-[#004d40] text-3xl lg:text-5xl z-10">
                                     ${labels[i%4]}
                                 </div> 
-                                <div class="proj-opt-container text-left flex-1 h-full w-full flex items-center overflow-hidden">
-                                    <span class="proj-opt-text-span block break-words w-full">${opt}</span>
+                                <div class="proj-opt-container text-center flex-1 h-full w-full flex items-center justify-center overflow-hidden pt-12 md:pt-16 px-4">
+                                    <span class="proj-opt-text-span inline-block break-words max-w-full leading-tight text-center">${opt}</span>
                                 </div>
                             `;
                             optContainer.appendChild(d);
