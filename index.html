@@ -326,7 +326,6 @@
                 </div>
             </div>
 
-            <!-- Vrácená standardní struktura s přirozeným obtékáním -->
             <div id="proj-top-section" class="w-full flex flex-col md:flex-row items-center justify-center shrink-0 gap-6 lg:gap-10 mb-4 lg:mb-8 min-h-[15vh] max-h-[30vh]">
                 <div id="proj-q-text-container" class="w-full h-full flex flex-col justify-center overflow-hidden">
                     <h2 id="proj-question-text" class="font-black text-[#004d40] leading-tight break-words m-0 text-center w-full"></h2>
@@ -399,14 +398,13 @@
             if(views[viewName]) views[viewName].classList.remove('hidden');
         }
 
-        // Zjednodušený a bezpečný skript na zmenšování písma
         window.resizeProjectorText = function() {
             if(document.getElementById('view-projector').classList.contains('hidden')) return;
 
             const qContainer = document.getElementById('proj-q-text-container');
             const qText = document.getElementById('proj-question-text');
             if (qText && qContainer && qText.innerText.trim() !== '') {
-                let qSize = 80; 
+                let qSize = 64; 
                 qText.style.fontSize = qSize + 'px';
                 while ((qText.scrollHeight > qContainer.clientHeight || qText.scrollWidth > qContainer.clientWidth) && qSize > 24) {
                     qSize -= 2;
@@ -417,15 +415,15 @@
             const optionContainers = document.querySelectorAll('.proj-opt-container');
             const optionSpans = document.querySelectorAll('.proj-opt-text-span');
             if (optionSpans.length > 0 && optionContainers.length > 0) {
-                let optSize = 70; // Bezpečný start, zabrání přetečení okna
+                let optSize = 120; 
                 let fits = false;
                 while (!fits && optSize > 16) {
-                    optionSpans.forEach(span => { span.style.fontSize = optSize + 'px'; });
+                    optionSpans.forEach(span => span.style.fontSize = optSize + 'px');
                     fits = true;
                     for (let i = 0; i < optionSpans.length; i++) {
                         const span = optionSpans[i];
                         const container = optionContainers[i];
-                        if (span.scrollHeight > container.clientHeight || span.scrollWidth > container.clientWidth) {
+                        if (span.scrollHeight > container.clientHeight - 8 || span.scrollWidth > container.clientWidth - 8) {
                             fits = false;
                             break;
                         }
@@ -580,6 +578,7 @@
                  });
             }
 
+            // Odeslání dat na projektor a studentům pro reflexi
             await updateDoc(doc(db, "rooms", roomPin), {
                 state: "reviewing",
                 questionIndex: index,
@@ -815,6 +814,7 @@
                     s.id = docSnap.id; 
                     
                     if (currentRoomDataTeacher && currentRoomDataTeacher.immediateFeedback && s.answeredCurrent && s.isCorrect === null) {
+                         // Bezpečné čtení otázky
                          const q = quizData[currentQuestionIndex];
                          if (q) {
                              const type = q.type ? q.type.trim() : 'multiple-choice';
@@ -833,6 +833,7 @@
                 window.allStudentsData = studentsArray; 
                 studentsArray.sort((a, b) => (b.score || 0) - (a.score || 0));
 
+                // TVRDÁ POJISTKA KONCE TESTU (zamezí smazání obrazovky po skončení testu)
                 if (currentRoomState === 'finished' || currentRoomState === 'reviewing' || currentQuestionIndex >= quizData.length) {
                     window.renderFinalLeaderboard();
                     window.renderFinalQuestionStats();
@@ -1269,12 +1270,14 @@
                             let bgCol = isCorrect ? 'bg-[#00ffff]' : 'bg-white';
 
                             const d = document.createElement('div');
-                            d.className = `proj-opt-container box-brutal p-4 lg:p-6 ${bgCol} text-[#004d40] font-black flex items-center justify-start uppercase leading-tight min-h-0 h-full overflow-hidden border-8 border-[#004d40]`;
+                            d.className = `box-brutal p-4 lg:p-6 ${bgCol} text-[#004d40] font-black flex items-start justify-start uppercase leading-tight min-h-0 h-full overflow-hidden`;
                             d.innerHTML = `
-                                <div class="font-black bg-[#004d40] text-white px-4 py-2 md:px-6 md:py-3 border-4 border-[#004d40] text-3xl lg:text-5xl mr-4 lg:mr-6 shrink-0 mt-1">
+                                <div class="mr-4 lg:mr-6 font-black bg-[#004d40] text-white px-4 py-2 border-4 border-[#004d40] shrink-0 flex items-center justify-center text-4xl lg:text-5xl mt-1">
                                     ${labels[i%4]}
                                 </div> 
-                                <span class="proj-opt-text-span inline-block text-left break-words w-full">${opt}</span>
+                                <div class="proj-opt-container text-left flex-1 h-full w-full flex items-center overflow-hidden">
+                                    <span class="proj-opt-text-span block break-words w-full">${opt}</span>
+                                </div>
                             `;
                             optContainer.appendChild(d);
                         });
@@ -1285,11 +1288,11 @@
 
                         optContainer.className = 'grid grid-cols-2 gap-4 lg:gap-8 w-full mt-4 flex-1 min-h-0';
                         optContainer.innerHTML = `
-                            <div class="proj-opt-container box-brutal ${isTrueCorrect ? 'bg-[#00ffff]' : 'bg-white'} text-[#004d40] border-8 border-[#004d40] font-black flex items-center justify-center h-full overflow-hidden p-8">
-                                <span class="proj-opt-text-span inline-block text-center w-full">PRAVDA</span>
+                            <div class="proj-opt-container box-brutal ${isTrueCorrect ? 'bg-[#00ffff]' : 'bg-white'} text-[#004d40] border-4 border-[#004d40] font-black flex items-center justify-center h-full overflow-hidden p-8">
+                                <span class="proj-opt-text-span block break-words text-center w-full">PRAVDA</span>
                             </div>
-                            <div class="proj-opt-container box-brutal ${isFalseCorrect ? 'bg-[#00ffff]' : 'bg-white'} text-[#004d40] border-8 border-[#004d40] font-black flex items-center justify-center h-full overflow-hidden p-8">
-                                <span class="proj-opt-text-span inline-block text-center w-full">NEPRAVDA</span>
+                            <div class="proj-opt-container box-brutal ${isFalseCorrect ? 'bg-[#00ffff]' : 'bg-white'} text-[#004d40] border-4 border-[#004d40] font-black flex items-center justify-center h-full overflow-hidden p-8">
+                                <span class="proj-opt-text-span block break-words text-center w-full">NEPRAVDA</span>
                             </div>
                         `;
                     } else if (data.questionType === 'text-input') {
@@ -1297,15 +1300,15 @@
                          if (isReview) {
                              const correctVal = data.correctAnswer ? data.correctAnswer.toString() : '';
                              optContainer.innerHTML = `
-                                <div class="proj-opt-container box-brutal p-8 bg-[#00ffff] w-full h-full flex flex-col items-center justify-center text-center overflow-hidden border-8 border-[#004d40]">
+                                <div class="proj-opt-container box-brutal p-8 bg-[#00ffff] w-full h-full flex flex-col items-center justify-center text-center overflow-hidden border-4 border-[#004d40]">
                                     <span class="text-2xl lg:text-4xl text-[#004d40] mb-4 uppercase">Správná odpověď:</span>
-                                    <span class="proj-opt-text-span inline-block text-[#004d40] font-black uppercase w-full break-words">${correctVal}</span>
+                                    <span class="proj-opt-text-span text-[#004d40] font-black uppercase w-full break-words">${correctVal}</span>
                                 </div>
                              `;
                          } else {
                              optContainer.innerHTML = `
-                                <div class="proj-opt-container box-brutal p-8 bg-white w-full h-full flex items-center justify-center text-center overflow-hidden border-8 border-[#004d40]">
-                                    <span class="proj-opt-text-span inline-block text-[#004d40] font-black uppercase animate-pulse w-full border-b-8 border-[#f4816e] pb-6">Zadejte přesnou odpověď na svém zařízení</span>
+                                <div class="proj-opt-container box-brutal p-8 bg-white w-full h-full flex items-center justify-center text-center overflow-hidden border-4 border-[#004d40]">
+                                    <span class="proj-opt-text-span text-[#004d40] font-black uppercase animate-pulse w-full border-b-8 border-[#f4816e] pb-6">Zadejte přesnou odpověď na svém zařízení</span>
                                 </div>
                              `;
                          }
@@ -1324,11 +1327,11 @@
                          }
 
                          let lCol = '<div class="flex flex-col space-y-4 w-full h-full justify-center min-h-0">';
-                         lItems.forEach(i => lCol += `<div class="proj-opt-container box-brutal ${isReview ? 'bg-[#00ffff]' : 'bg-white'} p-4 text-[#004d40] font-black border-8 border-[#004d40] text-center flex-1 flex items-center justify-center min-h-0 overflow-hidden"><span class="proj-opt-text-span inline-block w-full break-words">${i}</span></div>`);
+                         lItems.forEach(i => lCol += `<div class="proj-opt-container box-brutal ${isReview ? 'bg-[#00ffff]' : 'bg-white'} p-4 text-[#004d40] font-black border-4 border-[#004d40] text-center flex-1 flex items-center justify-center min-h-0 overflow-hidden"><span class="proj-opt-text-span block w-full break-words">${i}</span></div>`);
                          lCol += '</div>';
 
                          let rCol = '<div class="flex flex-col space-y-4 w-full h-full justify-center min-h-0">';
-                         rItems.forEach(i => rCol += `<div class="proj-opt-container box-brutal ${isReview ? 'bg-[#00ffff]' : 'bg-white'} p-4 text-[#004d40] font-black border-8 border-[#004d40] text-center flex-1 flex items-center justify-center min-h-0 overflow-hidden"><span class="proj-opt-text-span inline-block w-full break-words">${i}</span></div>`);
+                         rItems.forEach(i => rCol += `<div class="proj-opt-container box-brutal ${isReview ? 'bg-[#00ffff]' : 'bg-white'} p-4 text-[#004d40] font-black border-4 border-[#004d40] text-center flex-1 flex items-center justify-center min-h-0 overflow-hidden"><span class="proj-opt-text-span block w-full break-words">${i}</span></div>`);
                          rCol += '</div>';
 
                          optContainer.innerHTML = lCol + rCol;
