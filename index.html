@@ -244,7 +244,7 @@
     <div id="view-teacher-review" class="hidden flex-1 flex-col w-full max-w-7xl mx-auto mt-2 box-brutal bg-gray-100 p-4 md:p-8">
         <div class="flex flex-col md:flex-row justify-between items-center border-b-8 border-[#004d40] pb-6 mb-6 gap-4">
             <h2 class="text-3xl font-black uppercase text-[#004d40] tracking-widest text-center md:text-left">Společná reflexe</h2>
-            <!-- TLAČÍTKO PRO ODHALENÍ ODPOVĚDI NA PROJEKTORU -->
+            <!-- NOVÉ TLAČÍTKO PRO ODHALENÍ ODPOVĚDI -->
             <button id="btn-reveal-answer" class="btn bg-[#00ffff] text-[#004d40] sharp px-6 py-3 text-xl hover:bg-white transition-colors w-full md:w-auto">Ukázat správnou odpověď</button>
             <button id="btn-end-review" class="btn bg-[#f4816e] text-white sharp px-6 py-3 text-xl hover:bg-white hover:text-[#004d40] transition-colors w-full md:w-auto">Ukončit reflexi</button>
         </div>
@@ -539,14 +539,14 @@
             document.getElementById('btn-review-prev').disabled = index === 0;
             document.getElementById('btn-review-next').disabled = index === quizData.length - 1;
             document.getElementById('review-q-counter').innerText = `${index + 1}/${quizData.length}`;
-
-            // Pokaždé, když učitel přejde na novou otázku v reflexi, odhalovací tlačítko se ukáže
+            
+            // Tlačítko se při přechodu na další otázku ukáže, pokud je co odhalovat
             const q = quizData[index];
             const type = q.type ? q.type.trim() : 'multiple-choice';
             if (type !== 'matching') {
                 document.getElementById('btn-reveal-answer').classList.remove('hidden');
             } else {
-                document.getElementById('btn-reveal-answer').classList.add('hidden'); // Matching se odhaluje hned
+                document.getElementById('btn-reveal-answer').classList.add('hidden'); // Matching odhalujeme hned
             }
 
             document.getElementById('review-question-text').innerText = q.text;
@@ -565,7 +565,6 @@
 
                 opts.forEach((opt, i) => {
                     let isCorrect = opt.toString().toLowerCase().trim() === correctVal;
-                    // V panelu učitele ukážeme tyrkysovou barvu ihned vždy
                     let bgCol = isCorrect ? 'bg-[#00ffff]' : 'bg-white';
                     
                     const d = document.createElement('div');
@@ -595,7 +594,7 @@
                  });
             }
 
-            // Odeslání do DB. Přidáme revealAnswer: false a pošleme liveStats a answeredCount
+            // Odeslání dat na projektor a studentům pro reflexi
             let qStats = gameHistoryStats[index] ? gameHistoryStats[index].stats : null;
             let answeredCount = 0;
             if(qStats) {
@@ -611,9 +610,9 @@
                 questionImage: q.image || "", 
                 correctAnswer: q.correctAnswer || "",
                 totalQuestions: quizData.length,
-                revealAnswer: false, 
-                liveStats: qStats, 
-                answeredCount: answeredCount, 
+                revealAnswer: false, // DŮLEŽITÉ: skryje barvy pro projektor dokud učitel neklikne na tlačítko
+                liveStats: qStats, // Posíláme statistiky
+                answeredCount: answeredCount, // Posíláme počty
                 forceReset: Math.random() 
             });
         };
@@ -643,7 +642,7 @@
                 
                 html += `
                 <div class="flex border-4 border-[#004d40] p-4 items-center justify-between ${bgClass} box-brutal">
-                    <div class="font-bold mr-4 flex-1 text-left text-lg break-words">${i+1}.${q.text}</div>
+                    <div class="font-bold mr-4 flex-1 text-left text-lg break-words">${i+1}. ${q.text}</div>
                     <div class="font-black text-2xl w-10 text-center shrink-0 border-l-4 border-black/10 pl-2">${icon}</div>
                 </div>`;
             });
@@ -943,9 +942,9 @@
                     const pTimeout = (stats.timeout / answeredCount) * 100;
 
                     document.getElementById('analytics-bar').innerHTML = `
-                        <div class="bg-[#00ffff] h-full flex items-center justify-center font-black text-[#004d40] transition-all duration-300" style="width: ${pCorrect}\%">${stats.correct > 0 ? stats.correct : ''}</div>
-                        <div class="bg-[#f4816e] h-full flex items-center justify-center font-black text-white transition-all duration-300" style="width: ${pIncorrect}\%">${stats.incorrect > 0 ? stats.incorrect : ''}</div>
-                        <div class="bg-gray-400 h-full flex items-center justify-center font-black text-white transition-all duration-300" style="width: ${pTimeout}\%">${stats.timeout > 0 ? stats.timeout : ''}</div>
+                        <div class="bg-[#00ffff] h-full flex items-center justify-center font-black text-[#004d40] transition-all duration-300" style="width: ${pCorrect}%">${stats.correct > 0 ? stats.correct : ''}</div>
+                        <div class="bg-[#f4816e] h-full flex items-center justify-center font-black text-white transition-all duration-300" style="width: ${pIncorrect}%">${stats.incorrect > 0 ? stats.incorrect : ''}</div>
+                        <div class="bg-gray-400 h-full flex items-center justify-center font-black text-white transition-all duration-300" style="width: ${pTimeout}%">${stats.timeout > 0 ? stats.timeout : ''}</div>
                     `;
 
                     let breakdownHTML = '';
@@ -958,7 +957,7 @@
                             breakdownHTML = `<div class="grid grid-cols-4 gap-4">`;
                             labels.forEach(l => {
                                 const cnt = stats.answers[l] || 0;
-                                breakdownHTML += `<div class="box-brutal bg-white p-3 text-center text-2xl"><span class="font-black text-[#004d40]">${l}:</span>${cnt}</div>`;
+                                breakdownHTML += `<div class="box-brutal bg-white p-3 text-center text-2xl"><span class="font-black text-[#004d40]">${l}:</span> ${cnt}</div>`;
                             });
                             breakdownHTML += `</div>`;
                         } else if (type === 'true-false') {
@@ -1013,7 +1012,7 @@
 
                     const div = document.createElement('div');
                     div.className = `p-3 text-center font-black text-xl uppercase sharp box-brutal ${bg} cursor-pointer hover:opacity-75 transition-opacity`;
-                    div.innerHTML = `${index + 1}.${s.name}<br><span class="text-sm font-black mt-1 block ${textScore}">${s.score || 0} b.</span>`;
+                    div.innerHTML = `${index + 1}. ${s.name}<br><span class="text-sm font-black mt-1 block ${textScore}">${s.score || 0} b.</span>`;
                     div.onclick = () => { window.showStudentDetail(s.id); };
                     board.appendChild(div);
                 });
@@ -1042,11 +1041,11 @@
 
                     row.innerHTML = `
                         <div class="absolute top-0 right-0 bg-[#ffeb3b] text-[#004d40] px-3 py-1 text-xs font-black uppercase opacity-0 group-hover:opacity-100 transition-opacity border-b-4 border-l-4 border-[#004d40]">Spustit reflexi &rarr;</div>
-                        <div class="font-bold text-lg md:text-xl text-[#004d40] flex-1 break-words pr-24">${i+1}.${item.text}</div>
+                        <div class="font-bold text-lg md:text-xl text-[#004d40] flex-1 break-words pr-24">${i+1}. ${item.text}</div>
                         <div class="w-full md:w-1/3 h-8 flex border-4 border-[#004d40] shrink-0 bg-white">
-                            <div class="bg-[#00ffff] h-full flex items-center justify-center font-black text-[#004d40]" style="width: ${pC}\%">${item.stats.correct > 0 ? item.stats.correct : ''}</div>
-                            <div class="bg-[#f4816e] h-full flex items-center justify-center font-black text-white" style="width: ${pI}\%">${item.stats.incorrect > 0 ? item.stats.incorrect : ''}</div>
-                            <div class="bg-gray-400 h-full flex items-center justify-center font-black text-white" style="width: ${pT}\%">${item.stats.timeout > 0 ? item.stats.timeout : ''}</div>
+                            <div class="bg-[#00ffff] h-full flex items-center justify-center font-black text-[#004d40]" style="width: ${pC}%">${item.stats.correct > 0 ? item.stats.correct : ''}</div>
+                            <div class="bg-[#f4816e] h-full flex items-center justify-center font-black text-white" style="width: ${pI}%">${item.stats.incorrect > 0 ? item.stats.incorrect : ''}</div>
+                            <div class="bg-gray-400 h-full flex items-center justify-center font-black text-white" style="width: ${pT}%">${item.stats.timeout > 0 ? item.stats.timeout : ''}</div>
                         </div>
                     `;
                     container.appendChild(row);
@@ -1221,12 +1220,12 @@
                     document.getElementById('proj-end').classList.add('hidden');
 
                     const isReview = data.state === 'reviewing';
-                    const revealAnswer = data.revealAnswer === true;
+                    const revealAnswer = data.revealAnswer === true; // Zjišťujeme, zda učitel odhalil odpověď
 
                     const qCounter = document.getElementById('proj-q-counter');
                     const qCounterBox = document.getElementById('proj-q-counter-box');
                     if (qCounter) {
-                        qCounter.innerText = `${(data.questionIndex \vert{}\vert{} 0) + 1} /${data.totalQuestions || '?'}`;
+                        qCounter.innerText = `${(data.questionIndex || 0) + 1} / ${data.totalQuestions || '?'}`;
                         if(isReview) {
                             qCounterBox.classList.replace('bg-[#00ffff]', 'bg-[#ffeb3b]');
                             qCounter.innerText += ' (REFLEXE)';
@@ -1235,6 +1234,7 @@
                         }
                     }
 
+                    // TENTO BLOK SE NYNÍ ZAPNE I PŘI REFLEXI
                     const pCont = document.getElementById('proj-progress-container');
                     if (data.liveStats && data.answeredCount > 0) {
                         pCont.classList.remove('hidden');
@@ -1309,6 +1309,7 @@
                         const isTrueCorrect = isReview && correctVal === 'pravda';
                         const isFalseCorrect = isReview && correctVal === 'nepravda';
 
+                        // Odhalení pro True/False
                         let trueBg = (isTrueCorrect && revealAnswer) ? 'bg-[#00ffff]' : 'bg-white';
                         let falseBg = (isFalseCorrect && revealAnswer) ? 'bg-[#00ffff]' : 'bg-white';
 
@@ -1353,6 +1354,7 @@
                              if(p.length===2){ lItems.push(p[0].trim()); rItems.push(p[1].trim()); }
                          });
                          
+                         // Necháme položky zamíchané, dokud učitel neklikne na odhalit
                          if (!isReview || !revealAnswer) {
                              lItems.sort(() => Math.random() - 0.5);
                              rItems.sort(() => Math.random() - 0.5);
@@ -1397,7 +1399,7 @@
                     if(index === 1 || index === 2) bg = 'bg-[#f4816e]';
                     
                     div.className = `flex justify-between items-center p-6 box-brutal ${bg} border-8 border-[#004d40]`;
-                    div.innerHTML = `<span class="text-4xl lg:text-5xl font-black uppercase text-[#004d40]">${index + 1}.${s.name}</span><span class="text-4xl lg:text-5xl font-black text-[#004d40]">${s.score || 0}</span>`;
+                    div.innerHTML = `<span class="text-4xl lg:text-5xl font-black uppercase text-[#004d40]">${index + 1}. ${s.name}</span><span class="text-4xl lg:text-5xl font-black text-[#004d40]">${s.score || 0}</span>`;
                     board.appendChild(div);
                 });
             });
@@ -1724,4 +1726,23 @@
                 if (answerVal === -1) {
                     area.innerHTML = `<div class="box-brutal bg-gray-400 p-10 text-center border-4 border-[#004d40] h-[50vh] flex flex-col justify-center"><h2 class="text-4xl md:text-5xl font-black uppercase text-white">Čas vypršel!</h2></div>`;
                 } else {
-                    area.innerHTML = `<div class="box-brutal bg-white p-10 text-center border-4 border-[#004d40] h-[50vh] flex flex-col justify-center"><h2 class="text-4xl md
+                    area.innerHTML = `<div class="box-brutal bg-white p-10 text-center border-4 border-[#004d40] h-[50vh] flex flex-col justify-center"><h2 class="text-4xl md:text-5xl font-black uppercase text-[#004d40] animate-pulse">Vyhodnocuji...</h2></div>`;
+                }
+            } else {
+                if (answerVal === -1) {
+                    area.innerHTML = `<div class="box-brutal bg-gray-400 p-10 text-center border-4 border-[#004d40] h-[50vh] flex flex-col justify-center"><h2 class="text-4xl md:text-5xl font-black uppercase text-white">Čas vypršel!</h2></div>`;
+                } else {
+                    area.innerHTML = `<div class="box-brutal bg-white p-10 text-center border-4 border-[#004d40] h-[50vh] flex flex-col justify-center"><h2 class="text-4xl md:text-5xl font-black uppercase text-[#004d40]">Odesláno!</h2><p class="text-xl font-bold mt-4 text-[#004d40]">Čekej na ostatní...</p></div>`;
+                }
+            }
+            
+            const sRef = doc(db, "rooms", roomPin, "students", studentId);
+            await updateDoc(sRef, { 
+                answeredCurrent: true, 
+                lastAnswer: answerVal === -1 ? null : answerVal,
+                timeRemaining: timeLeft || 0
+            });
+        }
+    </script>
+</body>
+</html>
